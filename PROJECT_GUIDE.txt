@@ -1,0 +1,765 @@
+================================================================================
+INSIGHTAI API - GUÍA DE ENDPOINTS DE PROYECTOS
+================================================================================
+
+Esta guía cubre cómo usar todos los endpoints relacionados con proyectos.
+
+================================================================================
+1. AUTENTICACIÓN
+================================================================================
+
+Todos los endpoints de proyectos requieren autenticación mediante API Key.
+
+Formato de API Key:
+- Formato: sk_live_<64_caracteres_hex> o sk_test_<64_caracteres_hex>
+- Enviar en uno de estos formatos:
+  * Header: X-API-Key: sk_live_...
+  * Header: Authorization: Bearer sk_live_...
+
+Obtener una API Key:
+1. Crear un usuario (requiere Supra Admin o Tenant Admin)
+2. Generar API key para el usuario:
+   POST /api/users/{user_id}/api-keys
+   {
+     "name": "Mi API Key",
+     "expires_in_days": 90
+   }
+3. Guardar el valor "key" de la respuesta (solo se muestra una vez!)
+
+Ejemplo:
+curl -X POST https://your-api-endpoint.com/api/users/{user_id}/api-keys \
+  -H "X-API-Key: sk_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Mi API Key",
+    "expires_in_days": 90
+  }'
+
+Respuesta:
+{
+  "id": "api-key-uuid",
+  "key": "sk_live_abc123...",  // GUARDAR ESTO - solo se muestra una vez!
+  "name": "Mi API Key",
+  "expires_at": "2024-04-01T00:00:00Z"
+}
+
+
+================================================================================
+2. PERMISOS Y ACCESO
+================================================================================
+
+Todos los endpoints de proyectos requieren:
+- Autenticación: Header X-API-Key
+- Permisos específicos según la operación:
+  * PROJECT_CREATE: Crear proyectos
+  * PROJECT_READ: Leer/listar proyectos
+  * PROJECT_UPDATE: Actualizar proyectos
+  * PROJECT_DELETE: Eliminar proyectos
+- Acceso al tenant: Los usuarios solo pueden acceder a proyectos de sus tenants accesibles
+
+Notas importantes:
+- Los usuarios regulares solo ven proyectos de sus tenants accesibles
+- Supra Admin ve todos los proyectos
+- Si se proporciona tenant_id, el usuario debe tener acceso a ese tenant
+
+
+================================================================================
+3. ENDPOINTS DE PROYECTOS
+================================================================================
+
+
+--------------------------------------------------------------------------------
+3.1 CREAR PROYECTO
+--------------------------------------------------------------------------------
+
+Endpoint: POST /api/projects
+Permiso requerido: PROJECT_CREATE
+
+Request:
+curl -X POST https://your-api-endpoint.com/api/projects \
+  -H "X-API-Key: sk_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "tenant_id": "uuid-del-tenant",
+    "name": "Nombre del Proyecto",
+    "code": "CODIGO_PROYECTO",
+    "description": "Descripción opcional"
+  }'
+
+Campos Requeridos:
+- tenant_id: UUID del tenant (debe ser accesible por el usuario)
+- name: Nombre del proyecto
+
+Campos Opcionales:
+- code: Código del proyecto (único por tenant)
+- description: Descripción del proyecto
+
+Respuesta (201 Created):
+{
+  "id": "project-uuid",
+  "tenant_id": "tenant-uuid",
+  "name": "Nombre del Proyecto",
+  "code": "CODIGO_PROYECTO",
+  "description": "Descripción opcional",
+  "is_active": true,
+  "created_at": "2024-01-01T12:00:00Z",
+  "updated_at": "2024-01-01T12:00:00Z"
+}
+
+Errores:
+- 400: Campos requeridos faltantes (tenant_id, name)
+- 401: No autorizado (API key faltante o inválida)
+- 403: Permiso denegado o acceso denegado al tenant
+- 404: Tenant no encontrado
+- 409: Proyecto con este código ya existe para este tenant
+- 500: Error de base de datos
+
+Ejemplo Python:
+import requests
+
+api_endpoint = "https://your-api-endpoint.com"
+api_key = "sk_live_..."
+
+response = requests.post(
+    f"{api_endpoint}/api/projects",
+    headers={
+        "X-API-Key": api_key,
+        "Content-Type": "application/json"
+    },
+    json={
+        "tenant_id": "uuid-del-tenant",
+        "name": "Mi Proyecto",
+        "code": "PROJ001",
+        "description": "Descripción del proyecto"
+    }
+)
+
+if response.status_code == 201:
+    project = response.json()
+    print(f"Proyecto creado: {project['id']}")
+else:
+    print(f"Error: {response.status_code}")
+    print(response.json())
+
+
+--------------------------------------------------------------------------------
+3.2 LISTAR PROYECTOS
+--------------------------------------------------------------------------------
+
+Endpoint: GET /api/projects
+Permiso requerido: PROJECT_READ
+
+Request:
+curl -X GET "https://your-api-endpoint.com/api/projects?tenant_id=uuid&limit=50&offset=0" \
+  -H "X-API-Key: sk_live_..."
+
+Parámetros de Query (todos opcionales):
+- tenant_id: Filtrar por ID de tenant
+- limit: Número de resultados (por defecto: 50)
+- offset: Offset para paginación (por defecto: 0)
+
+Respuesta (200 OK):
+{
+  "projects": [
+    {
+      "id": "project-uuid-1",
+      "tenant_id": "tenant-uuid",
+      "name": "Proyecto 1",
+      "code": "PROJ1",
+      "description": "Descripción 1",
+      "is_active": true,
+      "created_at": "2024-01-01T12:00:00Z",
+      "updated_at": "2024-01-01T12:00:00Z"
+    },
+    {
+      "id": "project-uuid-2",
+      "tenant_id": "tenant-uuid",
+      "name": "Proyecto 2",
+      "code": "PROJ2",
+      "description": "Descripción 2",
+      "is_active": true,
+      "created_at": "2024-01-02T12:00:00Z",
+      "updated_at": "2024-01-02T12:00:00Z"
+    }
+  ],
+  "total": 2
+}
+
+Notas:
+- Los usuarios regulares solo ven proyectos de sus tenants accesibles
+- Supra Admin ve todos los proyectos
+- Si se proporciona tenant_id, el usuario debe tener acceso a ese tenant
+- Use limit y offset para paginación
+
+Ejemplo Python:
+import requests
+
+api_endpoint = "https://your-api-endpoint.com"
+api_key = "sk_live_..."
+
+# Listar todos los proyectos accesibles
+response = requests.get(
+    f"{api_endpoint}/api/projects",
+    headers={"X-API-Key": api_key}
+)
+
+if response.status_code == 200:
+    data = response.json()
+    print(f"Total proyectos: {data['total']}")
+    for project in data['projects']:
+        print(f"- {project['name']} ({project['code']})")
+
+# Listar proyectos de un tenant específico
+response = requests.get(
+    f"{api_endpoint}/api/projects",
+    headers={"X-API-Key": api_key},
+    params={"tenant_id": "uuid-del-tenant", "limit": 10, "offset": 0}
+)
+
+
+--------------------------------------------------------------------------------
+3.3 OBTENER PROYECTO ESPECÍFICO
+--------------------------------------------------------------------------------
+
+Endpoint: GET /api/projects/{project_id}
+Permiso requerido: PROJECT_READ
+
+Request:
+curl -X GET https://your-api-endpoint.com/api/projects/{project_id} \
+  -H "X-API-Key: sk_live_..."
+
+Parámetros de Path:
+- project_id: UUID del proyecto
+
+Respuesta (200 OK):
+{
+  "id": "project-uuid",
+  "tenant_id": "tenant-uuid",
+  "name": "Nombre del Proyecto",
+  "code": "CODIGO_PROYECTO",
+  "description": "Descripción del proyecto",
+  "is_active": true,
+  "created_at": "2024-01-01T12:00:00Z",
+  "updated_at": "2024-01-01T12:00:00Z"
+}
+
+Errores:
+- 400: ID de proyecto requerido
+- 401: No autorizado
+- 403: Permiso denegado o acceso denegado
+- 404: Proyecto no encontrado
+- 500: Error de base de datos
+
+Ejemplo Python:
+import requests
+
+api_endpoint = "https://your-api-endpoint.com"
+api_key = "sk_live_..."
+project_id = "project-uuid"
+
+response = requests.get(
+    f"{api_endpoint}/api/projects/{project_id}",
+    headers={"X-API-Key": api_key}
+)
+
+if response.status_code == 200:
+    project = response.json()
+    print(f"Proyecto: {project['name']}")
+    print(f"Código: {project['code']}")
+    print(f"Activo: {project['is_active']}")
+else:
+    print(f"Error: {response.status_code}")
+
+
+--------------------------------------------------------------------------------
+3.4 ACTUALIZAR PROYECTO
+--------------------------------------------------------------------------------
+
+Endpoint: PUT /api/projects/{project_id}
+Permiso requerido: PROJECT_UPDATE
+
+Request:
+curl -X PUT https://your-api-endpoint.com/api/projects/{project_id} \
+  -H "X-API-Key: sk_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Nombre Actualizado",
+    "code": "NUEVO_CODIGO",
+    "description": "Descripción actualizada",
+    "is_active": true
+  }'
+
+Parámetros de Path:
+- project_id: UUID del proyecto
+
+Campos del Body (todos opcionales - actualizar solo lo que necesite):
+- name: Nombre del proyecto
+- code: Código del proyecto
+- description: Descripción del proyecto
+- is_active: Estado activo (boolean)
+
+Respuesta (200 OK):
+{
+  "id": "project-uuid",
+  "tenant_id": "tenant-uuid",
+  "name": "Nombre Actualizado",
+  "code": "NUEVO_CODIGO",
+  "description": "Descripción actualizada",
+  "is_active": true,
+  "created_at": "2024-01-01T12:00:00Z",
+  "updated_at": "2024-01-01T13:00:00Z"
+}
+
+Errores:
+- 400: ID de proyecto requerido o ningún campo para actualizar
+- 401: No autorizado
+- 403: Permiso denegado o acceso denegado
+- 404: Proyecto no encontrado
+- 409: Proyecto con este código ya existe para este tenant
+- 500: Error de base de datos
+
+Ejemplo Python:
+import requests
+
+api_endpoint = "https://your-api-endpoint.com"
+api_key = "sk_live_..."
+project_id = "project-uuid"
+
+# Actualizar solo el nombre
+response = requests.put(
+    f"{api_endpoint}/api/projects/{project_id}",
+    headers={
+        "X-API-Key": api_key,
+        "Content-Type": "application/json"
+    },
+    json={
+        "name": "Nuevo Nombre"
+    }
+)
+
+# Actualizar múltiples campos
+response = requests.put(
+    f"{api_endpoint}/api/projects/{project_id}",
+    headers={
+        "X-API-Key": api_key,
+        "Content-Type": "application/json"
+    },
+    json={
+        "name": "Nombre Actualizado",
+        "description": "Nueva descripción",
+        "is_active": False
+    }
+)
+
+
+--------------------------------------------------------------------------------
+3.5 ELIMINAR PROYECTO
+--------------------------------------------------------------------------------
+
+Endpoint: DELETE /api/projects/{project_id}
+Permiso requerido: PROJECT_DELETE
+
+Request:
+curl -X DELETE https://your-api-endpoint.com/api/projects/{project_id} \
+  -H "X-API-Key: sk_live_..."
+
+Parámetros de Path:
+- project_id: UUID del proyecto
+
+Respuesta (200 OK):
+{
+  "message": "Project deleted successfully"
+}
+
+Errores:
+- 400: ID de proyecto requerido
+- 401: No autorizado
+- 403: Permiso denegado o acceso denegado
+- 404: Proyecto no encontrado
+- 500: Error de base de datos
+
+ADVERTENCIA: Eliminar un proyecto puede eliminar en cascada registros relacionados 
+(asesores, entrevistas, segmentos). Considere usar is_active=false en lugar de 
+eliminar si necesita mantener el historial.
+
+Ejemplo Python:
+import requests
+
+api_endpoint = "https://your-api-endpoint.com"
+api_key = "sk_live_..."
+project_id = "project-uuid"
+
+response = requests.delete(
+    f"{api_endpoint}/api/projects/{project_id}",
+    headers={"X-API-Key": api_key}
+)
+
+if response.status_code == 200:
+    print("Proyecto eliminado exitosamente")
+else:
+    print(f"Error: {response.status_code}")
+
+
+================================================================================
+4. MANEJO DE ERRORES
+================================================================================
+
+Códigos de Error Comunes:
+
+401 Unauthorized:
+- API key faltante en el header
+- API key inválida o expirada
+- Solución: Verificar que la API key esté en el header X-API-Key
+
+403 Forbidden:
+- Usuario no tiene el permiso requerido
+- Usuario no tiene acceso al tenant/proyecto
+- Solución: Verificar permisos del usuario y acceso al tenant
+
+404 Not Found:
+- Recurso no existe
+- Solución: Verificar que el ID sea correcto
+
+400 Bad Request:
+- Campos requeridos faltantes
+- Valores de campos inválidos
+- Solución: Verificar el body de la petición y campos requeridos
+
+409 Conflict:
+- Recurso duplicado (ej: código de proyecto ya existe)
+- Solución: Usar un código único o actualizar el recurso existente
+
+500 Internal Server Error:
+- Error de base de datos o servidor
+- Solución: Contactar soporte o revisar logs del servidor
+
+Ejemplo de Manejo de Errores en Python:
+import requests
+
+def handle_project_request(func):
+    try:
+        response = func()
+        if response.status_code in [200, 201]:
+            return response.json()
+        elif response.status_code == 401:
+            raise Exception("API key inválida o expirada")
+        elif response.status_code == 403:
+            raise Exception("Permiso denegado o sin acceso al tenant")
+        elif response.status_code == 404:
+            raise Exception("Proyecto no encontrado")
+        elif response.status_code == 409:
+            raise Exception("Código de proyecto ya existe")
+        else:
+            error_data = response.json() if response.text else {}
+            raise Exception(f"Error {response.status_code}: {error_data.get('message', 'Error desconocido')}")
+    except requests.exceptions.RequestException as e:
+        raise Exception(f"Error de conexión: {str(e)}")
+
+
+================================================================================
+5. MEJORES PRÁCTICAS
+================================================================================
+
+1. API Keys:
+   - Almacenar API keys de forma segura (variables de entorno, gestor de secretos)
+   - Nunca commitear API keys en control de versiones
+   - Rotar API keys regularmente
+   - Usar diferentes keys para diferentes ambientes (test/producción)
+
+2. Proyectos:
+   - Usar códigos de proyecto significativos (únicos por tenant)
+   - Establecer descripciones para mejor organización
+   - Usar el flag is_active para soft-delete en lugar de hard delete cuando sea posible
+   - Validar que el tenant_id sea accesible antes de crear proyectos
+
+3. Paginación:
+   - Usar limit y offset para listar proyectos
+   - Implementar paginación en el frontend para grandes volúmenes
+   - Considerar límites razonables (50-100 por página)
+
+4. Manejo de Errores:
+   - Siempre verificar códigos de estado de respuesta
+   - Parsear mensajes de error para debugging
+   - Implementar lógica de reintento para errores transitorios
+   - Logear errores para troubleshooting
+
+5. Performance:
+   - Usar paginación para endpoints de lista (limit/offset)
+   - Cachear API keys y contexto de usuario cuando sea posible
+   - Filtrar por tenant_id cuando sea necesario para reducir resultados
+
+
+================================================================================
+6. EJEMPLOS COMPLETOS
+================================================================================
+
+--------------------------------------------------------------------------------
+6.1 FLUJO COMPLETO: CREAR Y GESTIONAR PROYECTO
+--------------------------------------------------------------------------------
+
+import requests
+
+api_endpoint = "https://your-api-endpoint.com"
+api_key = "sk_live_..."
+tenant_id = "uuid-del-tenant"
+
+# 1. Crear proyecto
+print("Creando proyecto...")
+create_response = requests.post(
+    f"{api_endpoint}/api/projects",
+    headers={
+        "X-API-Key": api_key,
+        "Content-Type": "application/json"
+    },
+    json={
+        "tenant_id": tenant_id,
+        "name": "Proyecto de Ejemplo",
+        "code": "PROJ_EJEMPLO",
+        "description": "Este es un proyecto de ejemplo"
+    }
+)
+
+if create_response.status_code == 201:
+    project = create_response.json()
+    project_id = project["id"]
+    print(f"✓ Proyecto creado: {project_id}")
+    
+    # 2. Obtener proyecto
+    print("\nObteniendo proyecto...")
+    get_response = requests.get(
+        f"{api_endpoint}/api/projects/{project_id}",
+        headers={"X-API-Key": api_key}
+    )
+    if get_response.status_code == 200:
+        print(f"✓ Proyecto obtenido: {get_response.json()['name']}")
+    
+    # 3. Actualizar proyecto
+    print("\nActualizando proyecto...")
+    update_response = requests.put(
+        f"{api_endpoint}/api/projects/{project_id}",
+        headers={
+            "X-API-Key": api_key,
+            "Content-Type": "application/json"
+        },
+        json={
+            "description": "Descripción actualizada"
+        }
+    )
+    if update_response.status_code == 200:
+        print("✓ Proyecto actualizado")
+    
+    # 4. Listar proyectos
+    print("\nListando proyectos...")
+    list_response = requests.get(
+        f"{api_endpoint}/api/projects",
+        headers={"X-API-Key": api_key},
+        params={"tenant_id": tenant_id}
+    )
+    if list_response.status_code == 200:
+        data = list_response.json()
+        print(f"✓ Total proyectos: {data['total']}")
+    
+    # 5. Desactivar proyecto (soft delete)
+    print("\nDesactivando proyecto...")
+    deactivate_response = requests.put(
+        f"{api_endpoint}/api/projects/{project_id}",
+        headers={
+            "X-API-Key": api_key,
+            "Content-Type": "application/json"
+        },
+        json={"is_active": False}
+    )
+    if deactivate_response.status_code == 200:
+        print("✓ Proyecto desactivado")
+    
+    # 6. Eliminar proyecto (hard delete)
+    # print("\nEliminando proyecto...")
+    # delete_response = requests.delete(
+    #     f"{api_endpoint}/api/projects/{project_id}",
+    #     headers={"X-API-Key": api_key}
+    # )
+    # if delete_response.status_code == 200:
+    #     print("✓ Proyecto eliminado")
+else:
+    print(f"✗ Error al crear proyecto: {create_response.status_code}")
+    print(create_response.json())
+
+
+--------------------------------------------------------------------------------
+6.2 EJEMPLO CON MANEJO DE ERRORES ROBUSTO
+--------------------------------------------------------------------------------
+
+import requests
+from typing import Optional, Dict, Any
+
+class ProjectAPI:
+    def __init__(self, api_endpoint: str, api_key: str):
+        self.api_endpoint = api_endpoint
+        self.headers = {
+            "X-API-Key": api_key,
+            "Content-Type": "application/json"
+        }
+    
+    def _handle_response(self, response: requests.Response) -> Dict[str, Any]:
+        """Maneja la respuesta de la API con manejo de errores."""
+        if response.status_code in [200, 201]:
+            return response.json()
+        
+        error_data = response.json() if response.text else {}
+        error_msg = error_data.get("message", "Error desconocido")
+        
+        if response.status_code == 401:
+            raise Exception(f"Autenticación fallida: {error_msg}")
+        elif response.status_code == 403:
+            raise Exception(f"Permiso denegado: {error_msg}")
+        elif response.status_code == 404:
+            raise Exception(f"Recurso no encontrado: {error_msg}")
+        elif response.status_code == 409:
+            raise Exception(f"Conflicto: {error_msg}")
+        else:
+            raise Exception(f"Error {response.status_code}: {error_msg}")
+    
+    def create_project(self, tenant_id: str, name: str, code: Optional[str] = None, 
+                      description: Optional[str] = None) -> Dict[str, Any]:
+        """Crea un nuevo proyecto."""
+        data = {"tenant_id": tenant_id, "name": name}
+        if code:
+            data["code"] = code
+        if description:
+            data["description"] = description
+        
+        response = requests.post(
+            f"{self.api_endpoint}/api/projects",
+            headers=self.headers,
+            json=data
+        )
+        return self._handle_response(response)
+    
+    def list_projects(self, tenant_id: Optional[str] = None, 
+                     limit: int = 50, offset: int = 0) -> Dict[str, Any]:
+        """Lista proyectos."""
+        params = {"limit": limit, "offset": offset}
+        if tenant_id:
+            params["tenant_id"] = tenant_id
+        
+        response = requests.get(
+            f"{self.api_endpoint}/api/projects",
+            headers={"X-API-Key": self.headers["X-API-Key"]},
+            params=params
+        )
+        return self._handle_response(response)
+    
+    def get_project(self, project_id: str) -> Dict[str, Any]:
+        """Obtiene un proyecto específico."""
+        response = requests.get(
+            f"{self.api_endpoint}/api/projects/{project_id}",
+            headers={"X-API-Key": self.headers["X-API-Key"]}
+        )
+        return self._handle_response(response)
+    
+    def update_project(self, project_id: str, **kwargs) -> Dict[str, Any]:
+        """Actualiza un proyecto."""
+        response = requests.put(
+            f"{self.api_endpoint}/api/projects/{project_id}",
+            headers=self.headers,
+            json=kwargs
+        )
+        return self._handle_response(response)
+    
+    def delete_project(self, project_id: str) -> Dict[str, Any]:
+        """Elimina un proyecto."""
+        response = requests.delete(
+            f"{self.api_endpoint}/api/projects/{project_id}",
+            headers={"X-API-Key": self.headers["X-API-Key"]}
+        )
+        return self._handle_response(response)
+
+# Uso:
+api = ProjectAPI("https://your-api-endpoint.com", "sk_live_...")
+
+try:
+    # Crear proyecto
+    project = api.create_project(
+        tenant_id="uuid-del-tenant",
+        name="Mi Proyecto",
+        code="PROJ001",
+        description="Descripción"
+    )
+    print(f"Proyecto creado: {project['id']}")
+    
+    # Listar proyectos
+    projects_data = api.list_projects(tenant_id="uuid-del-tenant")
+    print(f"Total proyectos: {projects_data['total']}")
+    
+except Exception as e:
+    print(f"Error: {str(e)}")
+
+
+================================================================================
+7. REFERENCIA RÁPIDA
+================================================================================
+
+Endpoints de Proyectos:
+- Crear:    POST   /api/projects
+- Listar:   GET    /api/projects?tenant_id=uuid&limit=50&offset=0
+- Obtener:  GET    /api/projects/{id}
+- Actualizar: PUT    /api/projects/{id}
+- Eliminar: DELETE /api/projects/{id}
+
+Autenticación:
+- Header:   X-API-Key: sk_live_...
+- O:        Authorization: Bearer sk_live_...
+
+Permisos Requeridos:
+- Crear:    PROJECT_CREATE
+- Listar:   PROJECT_READ
+- Obtener:  PROJECT_READ
+- Actualizar: PROJECT_UPDATE
+- Eliminar: PROJECT_DELETE
+
+Campos del Proyecto:
+- id: UUID (generado automáticamente)
+- tenant_id: UUID del tenant (requerido al crear)
+- name: Nombre del proyecto (requerido al crear)
+- code: Código único por tenant (opcional)
+- description: Descripción (opcional)
+- is_active: Boolean, activo/inactivo (default: true)
+- created_at: Timestamp ISO 8601
+- updated_at: Timestamp ISO 8601
+
+
+================================================================================
+FIN DE LA GUÍA
+================================================================================
+
+
+
+
+para obtener el api key lo podemos hacer luego de que el ususario esta autenticado y podamos su id y hacer esta peticion para poder      
+guardar el api key en shared pref\
+Obtener una API Key:
+1. Crear un usuario (requiere Supra Admin o Tenant Admin)
+2. Generar API key para el usuario:
+   POST /api/users/{user_id}/api-keys
+   {
+     "name": "Mi API Key",
+     "expires_in_days": 90
+   }
+3. Guardar el valor "key" de la respuesta (solo se muestra una vez!)
+
+Ejemplo:
+curl -X POST https://your-api-endpoint.com/api/users/{user_id}/api-keys \
+  -H "X-API-Key: sk_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Mi API Key",
+    "expires_in_days": 90
+  }'
+
+Respuesta:
+{
+  "id": "api-key-uuid",
+  "key": "sk_live_abc123...",  // GUARDAR ESTO - solo se muestra una vez!
+  "name": "Mi API Key",
+  "expires_at": "2024-04-01T00:00:00Z"
+} 
