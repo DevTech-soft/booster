@@ -105,7 +105,7 @@ class RecordingBloc extends Bloc<RecordingEvent, RecordingState> {
       emit(RecordingStopped(
         finalDuration: _currentDuration,
         finalWaveformData: List.from(_waveformData),
-        audioPath: path,
+        audioPath: path!,
       ));
     } catch (e) {
       emit(RecordingError('Error al detener grabación: $e'));

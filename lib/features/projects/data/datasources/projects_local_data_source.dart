@@ -19,6 +19,7 @@ class ProjectsLocalDataSourceImpl implements ProjectsLocalDataSource {
         interviews: 125,
         updatedAt: DateTime(2023, 6, 9),
         isSelected: false,
+        isActive: true
       ),
       ProjectModel(
         id: '2',
@@ -27,6 +28,7 @@ class ProjectsLocalDataSourceImpl implements ProjectsLocalDataSource {
         interviews: 75,
         updatedAt: DateTime(2023, 8, 26),
         isSelected: true,
+        isActive: true,
       ),
       ProjectModel(
         id: '3',
@@ -35,6 +37,7 @@ class ProjectsLocalDataSourceImpl implements ProjectsLocalDataSource {
         interviews: 25,
         updatedAt: DateTime(2024, 1, 12),
         isSelected: false,
+        isActive: true,
       ),
       ProjectModel(
         id: '4',
@@ -43,6 +46,7 @@ class ProjectsLocalDataSourceImpl implements ProjectsLocalDataSource {
         interviews: 500,
         updatedAt: DateTime(2024, 3, 3),
         isSelected: false,
+        isActive: true,
       ),
       ProjectModel(
         id: '5',
@@ -51,6 +55,7 @@ class ProjectsLocalDataSourceImpl implements ProjectsLocalDataSource {
         interviews: 275,
         updatedAt: DateTime(2024, 3, 12),
         isSelected: false,
+        isActive: true,
       ),
     ];
   }

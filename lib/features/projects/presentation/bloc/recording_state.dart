@@ -1,3 +1,4 @@
+import 'package:booster/features/records/domain/entities/record_with_audio.dart';
 import 'package:equatable/equatable.dart';
 
 abstract class RecordingState extends Equatable {
@@ -34,16 +35,16 @@ class RecordingInProgress extends RecordingState {
   List<Object?> get props => [duration, waveformData];
 }
 
-class RecordingStopped extends RecordingState {
+class RecordingStopped extends RecordingWithAudio {
   final Duration finalDuration;
   final List<double> finalWaveformData;
-  final String? audioPath;
+  // final String? audioPath;
 
   const RecordingStopped({
     required this.finalDuration,
     required this.finalWaveformData,
-    this.audioPath,
-  });
+    required String audioPath,
+  }) : super(audioPath);
 
   @override
   List<Object?> get props => [finalDuration, finalWaveformData, audioPath];
@@ -58,50 +59,50 @@ class RecordingError extends RecordingState {
   List<Object?> get props => [message];
 }
 
-class AudioPlaying extends RecordingState {
+class AudioPlaying extends RecordingWithAudio {
   final Duration totalDuration;
   final Duration currentPosition;
   final List<double> waveformData;
-  final String audioPath;
+  // final String audioPath;
 
   const AudioPlaying({
     required this.totalDuration,
     required this.currentPosition,
     required this.waveformData,
-    required this.audioPath,
-  });
+    required String audioPath,
+  }):super(audioPath);
 
-  AudioPlaying copyWith({
+   AudioPlaying copyWith({
     Duration? totalDuration,
     Duration? currentPosition,
     List<double>? waveformData,
-    String? audioPath,
   }) {
     return AudioPlaying(
       totalDuration: totalDuration ?? this.totalDuration,
       currentPosition: currentPosition ?? this.currentPosition,
       waveformData: waveformData ?? this.waveformData,
-      audioPath: audioPath ?? this.audioPath,
+      audioPath: audioPath,
     );
   }
 
   @override
-  List<Object?> get props => [totalDuration, currentPosition, waveformData, audioPath];
+  List<Object?> get props =>
+      [totalDuration, currentPosition, waveformData, audioPath];
 }
 
-class AudioPaused extends RecordingState {
+class AudioPaused extends RecordingWithAudio {
   final Duration totalDuration;
   final Duration currentPosition;
   final List<double> waveformData;
-  final String audioPath;
 
   const AudioPaused({
     required this.totalDuration,
     required this.currentPosition,
     required this.waveformData,
-    required this.audioPath,
-  });
+    required String audioPath,
+  }) : super(audioPath);
 
   @override
-  List<Object?> get props => [totalDuration, currentPosition, waveformData, audioPath];
+  List<Object?> get props =>
+      [totalDuration, currentPosition, waveformData, audioPath];
 }

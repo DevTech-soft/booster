@@ -6,6 +6,7 @@ import 'package:booster/core/widgets/upload_widget.dart';
 import 'package:booster/features/projects/presentation/bloc/bloc.dart';
 import 'package:booster/features/projects/presentation/widgets/microphone_selector_widget.dart';
 import 'package:booster/features/projects/presentation/widgets/wave_form_widget.dart';
+import 'package:booster/features/records/domain/entities/record_with_audio.dart';
 import 'package:booster/features/records/presentation/blocs/record_upload_bloc.dart';
 import 'package:booster/features/records/presentation/blocs/record_upload_event.dart';
 import 'package:booster/features/records/presentation/blocs/record_upload_state.dart';
@@ -105,7 +106,6 @@ class _RecordStateContent extends StatelessWidget {
                 BlocConsumer<RecordUploadBloc, RecordUploadState>(
                   listener: (context, uploadState) {
                     if (uploadState is RecordUploadInProgress) {
-                      // opcional: loader global o modal
                       showDialog(
                         context: context,
                         barrierDismissible: false,
@@ -163,10 +163,10 @@ class _RecordStateContent extends StatelessWidget {
                           uploadState is RecordUploadInProgress
                               ? null
                               : () {
-                                if (state is RecordingStopped) {
+                                if (state is RecordingWithAudio) {
                                   context.read<RecordUploadBloc>().add(
                                     RecordUploadStarted(
-                                      audioPath: state.audioPath!,
+                                      audioPath: state.audioPath,
                                       transcription: '',
                                     ),
                                   );
@@ -391,5 +391,3 @@ class _RecordStateContent extends StatelessWidget {
     );
   }
 }
-
-

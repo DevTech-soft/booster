@@ -8,6 +8,7 @@ class ProjectModel extends Project {
     required super.interviews,
     required super.updatedAt,
     super.isSelected,
+    required super.isActive,
   });
 
   /// Mapea desde la respuesta de la API
@@ -28,6 +29,7 @@ class ProjectModel extends Project {
       interviews: interviews,
       updatedAt: DateTime.parse(json['updated_at'] as String),
       isSelected: json['isSelected'] as bool? ?? false,
+      isActive: json['is_active'] as bool
     );
   }
 
@@ -40,6 +42,7 @@ class ProjectModel extends Project {
       'interviews': interviews,
       'updatedAt': updatedAt.toIso8601String(),
       'isSelected': isSelected,
+      'is_active' : isActive,
     };
   }
 
@@ -51,6 +54,7 @@ class ProjectModel extends Project {
       interviews: project.interviews,
       updatedAt: project.updatedAt,
       isSelected: project.isSelected,
+      isActive: project.isActive,
     );
   }
 }

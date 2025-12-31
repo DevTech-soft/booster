@@ -7,6 +7,7 @@ class Project extends Equatable {
   final int interviews;
   final DateTime updatedAt;
   final bool isSelected;
+  final bool isActive;
 
   const Project({
     required this.id,
@@ -15,6 +16,7 @@ class Project extends Equatable {
     required this.interviews,
     required this.updatedAt,
     this.isSelected = false,
+    required this.isActive
   });
 
   Project copyWith({
@@ -24,6 +26,7 @@ class Project extends Equatable {
     int? interviews,
     DateTime? updatedAt,
     bool? isSelected,
+    bool? isActive
   }) {
     return Project(
       id: id ?? this.id,
@@ -32,9 +35,10 @@ class Project extends Equatable {
       interviews: interviews ?? this.interviews,
       updatedAt: updatedAt ?? this.updatedAt,
       isSelected: isSelected ?? this.isSelected,
+      isActive: isActive ?? this.isActive,
     );
   }
 
   @override
-  List<Object?> get props => [id, name, status, interviews, updatedAt, isSelected];
+  List<Object?> get props => [id, name, status, interviews, updatedAt, isSelected, isActive];
 }

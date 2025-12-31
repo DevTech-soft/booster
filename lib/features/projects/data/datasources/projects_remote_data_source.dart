@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:developer';
 import 'package:booster/core/error/exceptions.dart';
 import 'package:booster/core/services/api_key_service.dart';
 import 'package:booster/features/projects/data/models/project_model.dart';
@@ -33,9 +34,10 @@ class ProjectsRemoteDataSourceImpl implements ProjectsRemoteDataSource {
   String get _baseUrl => dotenv.env['API_URL'] ?? '';
 
   Map<String, String> get _headers {
-    final apiKey = apiKeyService.getApiKey();
+    String? apiKey = apiKeyService.getApiKey();
     if (apiKey == null || apiKey.isEmpty) {
-      throw ServerException('API Key no configurada');
+        apiKey = dotenv.env["API_KEY"]!;
+      //throw ServerException('API Key no configurada');
     }
 
     return {
@@ -70,7 +72,7 @@ class ProjectsRemoteDataSourceImpl implements ProjectsRemoteDataSource {
       if (response.statusCode == 200) {
         final jsonData = json.decode(response.body) as Map<String, dynamic>;
         final projectsList = jsonData['projects'] as List<dynamic>;
-
+        log(response.body);
         return projectsList
             .map((json) => ProjectModel.fromJson(json as Map<String, dynamic>))
             .toList();
@@ -82,6 +84,7 @@ class ProjectsRemoteDataSourceImpl implements ProjectsRemoteDataSource {
         final errorData =
             response.body.isNotEmpty ? json.decode(response.body) : {};
         final message = errorData['message'] ?? 'Error al obtener proyectos';
+        log(message);
         throw ServerException(message);
       }
     } on ServerException {
