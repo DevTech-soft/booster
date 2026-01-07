@@ -38,16 +38,19 @@ class RecordingInProgress extends RecordingState {
 class RecordingStopped extends RecordingWithAudio {
   final Duration finalDuration;
   final List<double> finalWaveformData;
-  // final String? audioPath;
+  final DateTime startedAt;
+  final DateTime endedAt;
 
   const RecordingStopped({
     required this.finalDuration,
     required this.finalWaveformData,
+    required this.startedAt,
+    required this.endedAt,
     required String audioPath,
   }) : super(audioPath);
 
   @override
-  List<Object?> get props => [finalDuration, finalWaveformData, audioPath];
+  List<Object?> get props => [finalDuration, finalWaveformData, startedAt, endedAt, audioPath];
 }
 
 class RecordingError extends RecordingState {

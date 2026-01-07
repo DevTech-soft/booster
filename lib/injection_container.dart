@@ -28,6 +28,12 @@ import 'package:booster/features/auth/domain/usecases/sign_out.dart';
 import 'package:booster/features/auth/domain/usecases/sign_up.dart';
 import 'package:booster/features/auth/domain/usecases/verify_and_set_password.dart';
 import 'package:booster/features/auth/presentation/bloc/auth_bloc.dart';
+// Interviews Feature
+import 'package:booster/features/interviews/data/datasources/interviews_remote_datasource.dart';
+import 'package:booster/features/interviews/data/repositories/interviews_repository_impl.dart';
+import 'package:booster/features/interviews/domain/repositories/interviews_repository.dart';
+import 'package:booster/features/interviews/domain/usecases/usecases.dart';
+import 'package:booster/features/interviews/presentation/bloc/bloc.dart';
 
 final sl = GetIt.instance;
 
@@ -56,6 +62,9 @@ Future<void> init() async {
 
   // Records Feature
   _initRecords();
+
+  // Interviews Feature
+  _initInterviews();
 
   // TODO: Add other features here
   // _initDashboard();
@@ -146,6 +155,7 @@ void _initRecords() {
   sl.registerFactory(
     () => RecordUploadBloc(
       uploadRecord: sl(),
+      createInterview: sl(), // Agregado para crear interview automáticamente
     ),
   );
 
@@ -163,5 +173,42 @@ void _initRecords() {
   sl.registerLazySingleton<RecordsRemoteDatasource>(
     () => RecordsRemoteDatasourceImpl(),
   );
+}
 
+// Init Interviews
+void _initInterviews() {
+  // BLoCs
+  sl.registerFactory(
+    () => InterviewsBloc(
+      getInterviews: sl(),
+    ),
+  );
+
+  sl.registerFactory(
+    () => InterviewDetailBloc(
+      getInterviewById: sl(),
+      deleteInterview: sl(),
+    ),
+  );
+
+  // Use Cases
+  sl.registerLazySingleton(() => GetInterviews(sl()));
+  sl.registerLazySingleton(() => GetInterviewById(sl()));
+  sl.registerLazySingleton(() => CreateInterview(sl()));
+  sl.registerLazySingleton(() => UpdateInterview(sl()));
+  sl.registerLazySingleton(() => DeleteInterview(sl()));
+
+  // Repository
+  sl.registerLazySingleton<InterviewsRepository>(
+    () => InterviewsRepositoryImpl(
+      remoteDataSource: sl(),
+    ),
+  );
+
+  // Data Source
+  sl.registerLazySingleton<InterviewsRemoteDataSource>(
+    () => InterviewsRemoteDataSourceImpl(
+      client: sl(),
+    ),
+  );
 }

@@ -3,13 +3,25 @@ import 'package:booster/core/theme/app_spacing.dart';
 import 'package:booster/core/theme/app_typography.dart';
 import 'package:booster/core/widgets/app_header.dart';
 import 'package:booster/core/widgets/outline_button.dart';
+import 'package:booster/features/interviews/domain/constants/interview_constants.dart';
 import 'package:booster/features/projects/presentation/widgets/record_state_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 
 class RecordPage extends StatefulWidget {
-  const RecordPage({super.key});
+  final String? projectId;
+  final String? tenantId;
+  final String? advisorId;
+  final InterviewType? interviewType;
+
+  const RecordPage({
+    super.key,
+    this.projectId,
+    this.tenantId,
+    this.advisorId,
+    this.interviewType,
+  });
 
   @override
   State<RecordPage> createState() => _RecordPageState();
@@ -42,7 +54,12 @@ class _RecordPageState extends State<RecordPage> {
                 child: Column(
                   children: [
                     AppSpacing.verticalSpaceXL,
-                    RecordStateWidget(),
+                    RecordStateWidget(
+                      projectId: widget.projectId,
+                      tenantId: widget.tenantId,
+                      advisorId: widget.advisorId,
+                      interviewType: widget.interviewType,
+                    ),
                     AppSpacing.verticalSpaceXL,
                      CustomOutlineButton(
                       borderRadius: AppSpacing.radiusXXL.r,

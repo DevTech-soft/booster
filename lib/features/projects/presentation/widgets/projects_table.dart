@@ -1,8 +1,11 @@
 import 'package:booster/core/theme/app_colors.dart';
 import 'package:booster/core/theme/app_spacing.dart';
 import 'package:booster/core/theme/app_typography.dart';
+import 'package:booster/features/interviews/presentation/bloc/bloc.dart';
+import 'package:booster/features/interviews/presentation/pages/interviews_list_page.dart';
 import 'package:booster/features/projects/domain/entities/project.dart';
 import 'package:booster/features/projects/presentation/bloc/bloc.dart';
+import 'package:booster/injection_container.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -135,7 +138,7 @@ class ProjectsTable extends StatelessWidget {
 
         _cellText(project.status, align: TextAlign.center),
 
-        _cellText(project.interviews.toString(), align: TextAlign.center),
+        _clickableInterviewsCell(context, project),
 
         _cellText(_formatDate(project.updatedAt), align: TextAlign.right),
       ],
@@ -161,6 +164,50 @@ class ProjectsTable extends StatelessWidget {
           color: color ?? AppColors.textBlack,
           decoration:
               underline ? TextDecoration.underline : TextDecoration.none,
+        ),
+      ),
+    );
+  }
+
+  Widget _clickableInterviewsCell(BuildContext context, Project project) {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 4.h),
+      child: InkWell(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => BlocProvider(
+                create: (context) => sl<InterviewsBloc>()
+                  ..add(LoadInterviews(
+                    tenantId: project.tenantId,
+                    projectId: project.id,
+                  )),
+                child: InterviewsListPage(
+                  projectId: project.id,
+                  projectName: project.name,
+                  tenantId: project.tenantId,
+                ),
+              ),
+            ),
+          );
+        },
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(4.r),
+          ),
+          child: Text(
+            project.interviews.toString(),
+            textAlign: TextAlign.center,
+            style: AppTypography.lightTextTheme.bodyMedium?.copyWith(
+              fontSize: 11.sp,
+              height: 1.2,
+              color: AppColors.primary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ),
       ),
     );

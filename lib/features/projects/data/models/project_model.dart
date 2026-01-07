@@ -3,6 +3,7 @@ import 'package:booster/features/projects/domain/entities/project.dart';
 class ProjectModel extends Project {
   const ProjectModel({
     required super.id,
+    required super.tenantId,
     required super.name,
     required super.status,
     required super.interviews,
@@ -24,6 +25,7 @@ class ProjectModel extends Project {
 
     return ProjectModel(
       id: json['id'] as String,
+      tenantId: json['tenant_id'] as String,
       name: json['name'] as String,
       status: status,
       interviews: interviews,
@@ -37,6 +39,7 @@ class ProjectModel extends Project {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
+      'tenant_id': tenantId,
       'name': name,
       'status': status,
       'interviews': interviews,
@@ -49,6 +52,7 @@ class ProjectModel extends Project {
   factory ProjectModel.fromEntity(Project project) {
     return ProjectModel(
       id: project.id,
+      tenantId: project.tenantId,
       name: project.name,
       status: project.status,
       interviews: project.interviews,

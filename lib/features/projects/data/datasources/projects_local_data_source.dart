@@ -14,6 +14,7 @@ class ProjectsLocalDataSourceImpl implements ProjectsLocalDataSource {
     return [
       ProjectModel(
         id: '1',
+        tenantId: 'tenant-001',
         name: 'MANGA HAUS 1',
         status: 'Abierto',
         interviews: 125,
@@ -23,6 +24,7 @@ class ProjectsLocalDataSourceImpl implements ProjectsLocalDataSource {
       ),
       ProjectModel(
         id: '2',
+        tenantId: 'tenant-001',
         name: 'MANGA HAUS 2',
         status: 'Abierto',
         interviews: 75,
@@ -32,6 +34,7 @@ class ProjectsLocalDataSourceImpl implements ProjectsLocalDataSource {
       ),
       ProjectModel(
         id: '3',
+        tenantId: 'tenant-001',
         name: 'MUV',
         status: 'Abierto',
         interviews: 25,
@@ -41,6 +44,7 @@ class ProjectsLocalDataSourceImpl implements ProjectsLocalDataSource {
       ),
       ProjectModel(
         id: '4',
+        tenantId: 'tenant-001',
         name: 'WOW',
         status: 'Abierto',
         interviews: 500,
@@ -50,6 +54,7 @@ class ProjectsLocalDataSourceImpl implements ProjectsLocalDataSource {
       ),
       ProjectModel(
         id: '5',
+        tenantId: 'tenant-001',
         name: 'FELICITI',
         status: 'Abierto',
         interviews: 275,

@@ -4,6 +4,9 @@ import 'package:booster/core/theme/app_typography.dart';
 import 'package:booster/core/widgets/app_header.dart';
 import 'package:booster/core/widgets/outline_button.dart';
 import 'package:booster/core/widgets/primary_button.dart';
+import 'package:booster/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:booster/features/auth/presentation/bloc/auth_state.dart';
+import 'package:booster/features/interviews/domain/constants/interview_constants.dart';
 import 'package:booster/features/projects/presentation/bloc/bloc.dart';
 import 'package:booster/features/projects/presentation/pages/record_page.dart';
 import 'package:booster/features/projects/presentation/widgets/action_bar.dart';
@@ -59,22 +62,21 @@ class _ProjectsPageContent extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    CustomOutlineButton(
-                      borderRadius: AppSpacing.radiusXXL.r,
-                      width: 200.w,
-                      isFullWidth: false,
-                      icon: SvgPicture.asset('assets/svg/microphone.svg'),
-                      text: 'INICIAR AUDIO',
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const RecordPage(),
-                          ),
+                    BlocBuilder<ProjectsBloc, ProjectsState>(
+                      builder: (context, projectsState) {
+                        return CustomOutlineButton(
+                          borderRadius: AppSpacing.radiusXXL.r,
+                          width: 200.w,
+                          isFullWidth: false,
+                          icon: SvgPicture.asset('assets/svg/microphone.svg'),
+                          text: 'INICIAR AUDIO',
+                          onPressed: () {
+                            _handleStartRecording(context, projectsState);
+                          },
+                          textColor: AppColors.primary,
+                          borderColor: AppColors.primary,
                         );
                       },
-                      textColor: AppColors.primary,
-                      borderColor: AppColors.primary,
                     ),
                   ],
                 ),
@@ -228,6 +230,129 @@ class _ProjectsPageContent extends StatelessWidget {
             },
           ),
         ],
+      ),
+    );
+  }
+
+  void _handleStartRecording(BuildContext context, ProjectsState projectsState) {
+    // Verificar que hay proyectos cargados y al menos uno seleccionado
+    if (projectsState is! ProjectsLoaded) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Por favor espera a que se carguen los proyectos')),
+      );
+      return;
+    }
+
+    if (projectsState.selectedProjectIds.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Por favor selecciona un proyecto primero')),
+      );
+      return;
+    }
+
+    // Obtener el primer proyecto seleccionado
+    final selectedProject = projectsState.projects.firstWhere(
+      (project) => projectsState.selectedProjectIds.contains(project.id),
+    );
+
+    // Obtener el usuario actual del AuthBloc
+    final authState = context.read<AuthBloc>().state;
+    if (authState is! Authenticated) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Error: Usuario no autenticado')),
+      );
+      return;
+    }
+
+    if (authState.user.advisorId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Error: No se pudo obtener el advisor ID. Por favor, intenta cerrar sesión e ingresar nuevamente.')),
+      );
+      return;
+    }
+
+    // Mostrar diálogo para seleccionar tipo de entrevista
+    _showInterviewTypeDialog(
+      context,
+      projectId: selectedProject.id,
+      tenantId: selectedProject.tenantId,
+      advisorId: authState.user.advisorId!,
+    );
+  }
+
+  void _showInterviewTypeDialog(
+    BuildContext context, {
+    required String projectId,
+    required String tenantId,
+    required String advisorId,
+  }) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Tipo de Entrevista'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Selecciona el tipo de entrevista que vas a realizar:'),
+            SizedBox(height: AppSpacing.lg.h),
+            ListTile(
+              title: const Text('Visita'),
+              subtitle: const Text('Entrevista realizada en campo'),
+              leading: const Icon(Icons.location_on, color: AppColors.primary),
+              onTap: () {
+                Navigator.of(dialogContext).pop();
+                _navigateToRecordPage(
+                  context,
+                  projectId: projectId,
+                  tenantId: tenantId,
+                  advisorId: advisorId,
+                  interviewType: InterviewType.visita,
+                );
+              },
+            ),
+            ListTile(
+              title: const Text('Cliente'),
+              subtitle: const Text('Entrevista con cliente'),
+              leading: const Icon(Icons.person, color: AppColors.primary),
+              onTap: () {
+                Navigator.of(dialogContext).pop();
+                _navigateToRecordPage(
+                  context,
+                  projectId: projectId,
+                  tenantId: tenantId,
+                  advisorId: advisorId,
+                  interviewType: InterviewType.cliente,
+                );
+              },
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancelar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _navigateToRecordPage(
+    BuildContext context, {
+    required String projectId,
+    required String tenantId,
+    required String advisorId,
+    required InterviewType interviewType,
+  }) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => RecordPage(
+          projectId: projectId,
+          tenantId: tenantId,
+          advisorId: advisorId,
+          interviewType: interviewType,
+        ),
       ),
     );
   }

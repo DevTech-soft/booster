@@ -3,6 +3,8 @@ import 'package:booster/core/theme/app_colors.dart';
 import 'package:booster/core/theme/app_spacing.dart';
 import 'package:booster/core/widgets/primary_button.dart';
 import 'package:booster/core/widgets/upload_widget.dart';
+import 'package:booster/features/interviews/domain/constants/interview_constants.dart';
+import 'package:booster/features/interviews/presentation/pages/interview_detail_page.dart';
 import 'package:booster/features/projects/presentation/bloc/bloc.dart';
 import 'package:booster/features/projects/presentation/widgets/microphone_selector_widget.dart';
 import 'package:booster/features/projects/presentation/widgets/wave_form_widget.dart';
@@ -17,7 +19,18 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 
 class RecordStateWidget extends StatelessWidget {
-  const RecordStateWidget({super.key});
+  final String? projectId;
+  final String? tenantId;
+  final String? advisorId;
+  final InterviewType? interviewType;
+
+  const RecordStateWidget({
+    super.key,
+    this.projectId,
+    this.tenantId,
+    this.advisorId,
+    this.interviewType,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -26,13 +39,28 @@ class RecordStateWidget extends StatelessWidget {
         BlocProvider<RecordingBloc>(create: (_) => RecordingBloc()),
         BlocProvider<RecordUploadBloc>(create: (_) => sl<RecordUploadBloc>()),
       ],
-      child: const _RecordStateContent(),
+      child: _RecordStateContent(
+        projectId: projectId,
+        tenantId: tenantId,
+        advisorId: advisorId,
+        interviewType: interviewType,
+      ),
     );
   }
 }
 
 class _RecordStateContent extends StatelessWidget {
-  const _RecordStateContent();
+  final String? projectId;
+  final String? tenantId;
+  final String? advisorId;
+  final InterviewType? interviewType;
+
+  const _RecordStateContent({
+    this.projectId,
+    this.tenantId,
+    this.advisorId,
+    this.interviewType,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -116,6 +144,46 @@ class _RecordStateContent extends StatelessWidget {
                       );
                     }
 
+                    if (uploadState is InterviewCreating) {
+                      // Ya está el loader mostrando, no hacemos nada
+                    }
+
+                    if (uploadState is InterviewCreated) {
+                      Navigator.of(
+                        context,
+                        rootNavigator: true,
+                      ).pop(); 
+                      log(uploadState.interviewId);
+                      _showInterviewCreatedBottomSheet(
+                        context,
+                        uploadState.interviewId,
+                      );
+                    }
+
+                    if (uploadState is InterviewCreationFailed) {
+                      Navigator.of(
+                        context,
+                        rootNavigator: true,
+                      ).pop(); // cerrar loader
+
+                      showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        shape: const RoundedRectangleBorder(
+                          borderRadius: BorderRadius.vertical(
+                            top: Radius.circular(20),
+                          ),
+                        ),
+                        builder: (_) {
+                          return UploadResultSheet(
+                            title: 'Error al crear entrevista',
+                            message:
+                                'El audio se subió correctamente pero hubo un error al crear la entrevista: ${uploadState.message}',
+                          );
+                        },
+                      );
+                    }
+
                     if (uploadState is RecordUploadSuccess) {
                       Navigator.of(
                         context,
@@ -155,19 +223,42 @@ class _RecordStateContent extends StatelessWidget {
                     return PrimaryButton(
                       text:
                           uploadState is RecordUploadInProgress
-                              ? 'Subiendo...'
-                              : 'Guardar Audio',
+                              ? 'Subiendo audio...'
+                              : uploadState is InterviewCreating
+                                  ? 'Creando entrevista...'
+                                  : 'Guardar Audio',
                       isFullWidth: false,
                       width: 200.w,
                       onPressed:
-                          uploadState is RecordUploadInProgress
+                          uploadState is RecordUploadInProgress ||
+                                  uploadState is InterviewCreating
                               ? null
                               : () {
                                 if (state is RecordingWithAudio) {
+                                  // Capturar datos adicionales si el estado es RecordingStopped
+                                  DateTime? startedAt;
+                                  DateTime? endedAt;
+                                  int? durationSec;
+
+                                  if (state is RecordingStopped) {
+                                    startedAt = state.startedAt;
+                                    endedAt = state.endedAt;
+                                    durationSec = state.finalDuration.inSeconds;
+                                  }
+
                                   context.read<RecordUploadBloc>().add(
                                     RecordUploadStarted(
                                       audioPath: state.audioPath,
                                       transcription: '',
+                                      projectId: projectId,
+                                      tenantId: tenantId,
+                                      advisorId: 
+                                      "6fe97cd6-6206-4c3e-adc3-491592f1ecad",
+                                      // advisorId,
+                                      interviewType: interviewType,
+                                      startedAt: startedAt,
+                                      endedAt: endedAt,
+                                      durationSec: durationSec,
                                     ),
                                   );
                                 }
@@ -388,6 +479,131 @@ class _RecordStateContent extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  void _showInterviewCreatedBottomSheet(
+    BuildContext context,
+    String interviewId,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      isDismissible: false,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(20),
+        ),
+      ),
+      builder: (bottomSheetContext) {
+        return Padding(
+          padding: EdgeInsets.only(
+            left: 20.w,
+            right: 20.w,
+            top: 20.h,
+            bottom: MediaQuery.of(bottomSheetContext).viewInsets.bottom + 20.h,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Handle bar
+              Center(
+                child: Container(
+                  width: 40.w,
+                  height: 4.h,
+                  margin: EdgeInsets.only(bottom: 16.h),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade400,
+                    borderRadius: BorderRadius.circular(10.r),
+                  ),
+                ),
+              ),
+
+              // Icono de éxito
+              Center(
+                child: Container(
+                  width: 60.w,
+                  height: 60.h,
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade100,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.check_circle,
+                    color: Colors.green,
+                    size: 40.sp,
+                  ),
+                ),
+              ),
+
+              SizedBox(height: 16.h),
+
+              // Título
+              Center(
+                child: Text(
+                  'Entrevista creada exitosamente',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+
+              SizedBox(height: 12.h),
+
+              // Mensaje
+              Center(
+                child: Text(
+                  'El audio se ha subido y la entrevista se ha registrado correctamente. Ahora puedes ver su detalle y seguir su procesamiento.',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                  textAlign: TextAlign.center,
+                ),
+              ),
+
+              SizedBox(height: 24.h),
+
+              // Botones
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () {
+                        Navigator.of(bottomSheetContext).pop();
+                        // Resetear el estado del upload bloc
+                        context.read<RecordUploadBloc>().add(const RecordUploadReset());
+                      },
+                      child: const Text('Cerrar'),
+                    ),
+                  ),
+                  SizedBox(width: 12.w),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.of(bottomSheetContext).pop();
+                        // Navegar al detalle de la entrevista
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => InterviewDetailPage(
+                              interviewId: interviewId,
+                            ),
+                          ),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                      ),
+                      child: const Text('Ver Detalle'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

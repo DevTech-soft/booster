@@ -17,6 +17,7 @@ class RecordingBloc extends Bloc<RecordingEvent, RecordingState> {
   final List<double> _waveformData = [];
   String? _selectedDeviceId;
   String? _selectedDeviceName;
+  DateTime? _recordingStartedAt;
 
   RecordingBloc() : super(const RecordingInitial()) {
     on<StartRecording>(_onStartRecording);
@@ -54,9 +55,10 @@ class RecordingBloc extends Bloc<RecordingEvent, RecordingState> {
           path: path,
         );
 
-        // Resetear datos
+        // Resetear datos y capturar timestamp de inicio
         _currentDuration = Duration.zero;
         _waveformData.clear();
+        _recordingStartedAt = DateTime.now();
 
         // Emitir estado inicial de grabación
         emit(RecordingInProgress(
@@ -100,11 +102,14 @@ class RecordingBloc extends Bloc<RecordingEvent, RecordingState> {
 
       // Detener grabación y obtener path
       final path = await _audioRecorder.stop();
+      final endedAt = DateTime.now();
 
-      // Emitir estado detenido
+      // Emitir estado detenido con timestamps
       emit(RecordingStopped(
         finalDuration: _currentDuration,
         finalWaveformData: List.from(_waveformData),
+        startedAt: _recordingStartedAt ?? endedAt,
+        endedAt: endedAt,
         audioPath: path!,
       ));
     } catch (e) {

@@ -1,0 +1,732 @@
+================================================================================
+GUÍA DE USO DE INTERVIEWS (ENTREVISTAS) - InsightAI
+================================================================================
+
+Esta guía explica qué son las entrevistas (interviews) y cómo usarlas en el
+sistema InsightAI.
+
+================================================================================
+1. ¿QUÉ ES UNA INTERVIEW?
+================================================================================
+
+Una "interview" (entrevista) es un registro en la base de datos que representa
+una grabación de audio procesada en el sistema. Cada entrevista está asociada a:
+
+- Un archivo de audio almacenado en S3
+- Un tenant (organización)
+- Un proyecto
+- Un advisor (asesor/vendedor)
+- Un tipo: VISITA o CLIENTE
+
+Las entrevistas pasan por diferentes estados durante el procesamiento:
+RECEIVED → TRANSCRIBED → EMBEDDED → INDEXED
+
+================================================================================
+2. ESTRUCTURA DE LA TABLA INTERVIEWS
+================================================================================
+
+La tabla `interviews` contiene los siguientes campos:
+
+- id (UUID): Identificador único de la entrevista
+- tenant_id (UUID): ID del tenant al que pertenece
+- project_id (UUID): ID del proyecto asociado
+- advisor_id (UUID): ID del advisor/vendedor
+- interview_type (VARCHAR): Tipo de entrevista ('VISITA' o 'CLIENTE')
+- s3_audio_key (VARCHAR): Ruta del archivo de audio en S3
+- language_code (VARCHAR): Código de idioma (default: 'es-PE')
+- started_at (TIMESTAMP): Fecha/hora de inicio de la entrevista
+- ended_at (TIMESTAMP): Fecha/hora de fin de la entrevista
+- duration_sec (INTEGER): Duración en segundos
+- status (VARCHAR): Estado actual de procesamiento:
+    * RECEIVED: Audio recibido, esperando transcripción
+    * TRANSCRIBED: Transcripción completada
+    * EMBEDDED: Embeddings generados
+    * INDEXED: Indexado en pgvector, listo para búsqueda
+    * FAILED: Error en el procesamiento
+- provider_used (VARCHAR): Proveedor usado ('GEMINI' o 'TRANSCRIBE')
+- created_at (TIMESTAMP): Fecha de creación
+- updated_at (TIMESTAMP): Última actualización
+
+================================================================================
+3. TIPOS DE ENTREVISTAS
+================================================================================
+
+VISITA:
+- Entrevistas de visitas inmobiliarias
+- Tienen 3 fases: SALA, RECORRIDO, POST-SALA
+- Duración típica: 30-60 minutos
+- Se transcriben con formato estructurado por fases
+
+CLIENTE:
+- Entrevistas con clientes
+- No tienen fases formales
+- Duración típica: 30-45 minutos
+- Se transcriben sin estructura de fases
+
+================================================================================
+4. ESTADOS DEL PROCESAMIENTO
+================================================================================
+
+RECEIVED:
+- El audio ha sido subido a S3
+- La entrevista ha sido creada en la base de datos
+- Esperando inicio del pipeline de procesamiento
+
+TRANSCRIBED:
+- El audio ha sido transcrito (usando Gemini o AWS Transcribe)
+- El texto está disponible en S3
+- Listo para generar embeddings
+
+EMBEDDED:
+- Se han generado embeddings para los segmentos de texto
+- Los embeddings están listos para indexar
+
+INDEXED:
+- Los embeddings han sido indexados en pgvector
+- La entrevista está lista para búsqueda semántica y RAG
+- Puede ser consultada por el chatbot
+
+FAILED:
+- Ocurrió un error durante el procesamiento
+- Revisar logs para identificar el problema
+
+================================================================================
+5. PERMISOS REQUERIDOS
+================================================================================
+
+Para trabajar con interviews, necesitas los siguientes permisos:
+
+- INTERVIEW_READ: Leer/listar entrevistas
+- INTERVIEW_CREATE: Crear nuevas entrevistas
+- INTERVIEW_UPDATE: Actualizar entrevistas existentes
+- INTERVIEW_DELETE: Eliminar entrevistas
+
+Ejemplo de asignación de permisos a un rol:
+{
+  "permission_codes": [
+    "INTERVIEW_READ",
+    "INTERVIEW_CREATE",
+    "INTERVIEW_UPDATE",
+    "INTERVIEW_DELETE"
+  ]
+}
+
+O usar wildcard:
+{
+  "permission_codes": ["INTERVIEW_*"]
+}
+
+================================================================================
+6. CONSULTAS SQL ÚTILES
+================================================================================
+
+NOTA: Actualmente no existe un handler de API para interviews, por lo que
+debes usar consultas SQL directas a la base de datos Aurora PostgreSQL.
+
+--------------------------------------------------------------------------------
+6.1 LISTAR TODAS LAS ENTREVISTAS DE UN TENANT
+--------------------------------------------------------------------------------
+
+SELECT 
+    id,
+    interview_type,
+    status,
+    s3_audio_key,
+    started_at,
+    ended_at,
+    duration_sec,
+    provider_used,
+    created_at
+FROM interviews
+WHERE tenant_id = 'uuid-del-tenant'
+ORDER BY created_at DESC;
+
+--------------------------------------------------------------------------------
+6.2 LISTAR ENTREVISTAS POR PROYECTO
+--------------------------------------------------------------------------------
+
+SELECT 
+    i.id,
+    i.interview_type,
+    i.status,
+    i.s3_audio_key,
+    i.created_at,
+    p.name as project_name
+FROM interviews i
+JOIN projects p ON i.project_id = p.id
+WHERE i.project_id = 'uuid-del-proyecto'
+ORDER BY i.created_at DESC;
+
+--------------------------------------------------------------------------------
+6.3 LISTAR ENTREVISTAS POR ADVISOR
+--------------------------------------------------------------------------------
+
+SELECT 
+    i.id,
+    i.interview_type,
+    i.status,
+    i.s3_audio_key,
+    i.created_at,
+    a.name as advisor_name
+FROM interviews i
+JOIN advisors a ON i.advisor_id = a.id
+WHERE i.advisor_id = 'uuid-del-advisor'
+ORDER BY i.created_at DESC;
+
+--------------------------------------------------------------------------------
+6.4 FILTRAR POR TIPO DE ENTREVISTA
+--------------------------------------------------------------------------------
+
+-- Solo visitas
+SELECT * FROM interviews
+WHERE tenant_id = 'uuid-del-tenant'
+  AND interview_type = 'VISITA'
+ORDER BY created_at DESC;
+
+-- Solo clientes
+SELECT * FROM interviews
+WHERE tenant_id = 'uuid-del-tenant'
+  AND interview_type = 'CLIENTE'
+ORDER BY created_at DESC;
+
+--------------------------------------------------------------------------------
+6.5 FILTRAR POR ESTADO
+--------------------------------------------------------------------------------
+
+-- Entrevistas completadas (listas para búsqueda)
+SELECT * FROM interviews
+WHERE tenant_id = 'uuid-del-tenant'
+  AND status = 'INDEXED'
+ORDER BY created_at DESC;
+
+-- Entrevistas en procesamiento
+SELECT * FROM interviews
+WHERE tenant_id = 'uuid-del-tenant'
+  AND status IN ('RECEIVED', 'TRANSCRIBED', 'EMBEDDED')
+ORDER BY created_at DESC;
+
+-- Entrevistas con errores
+SELECT * FROM interviews
+WHERE tenant_id = 'uuid-del-tenant'
+  AND status = 'FAILED'
+ORDER BY created_at DESC;
+
+--------------------------------------------------------------------------------
+6.6 OBTENER UNA ENTREVISTA ESPECÍFICA
+--------------------------------------------------------------------------------
+
+SELECT * FROM interviews
+WHERE id = 'uuid-de-la-entrevista';
+
+--------------------------------------------------------------------------------
+6.7 CONTAR ENTREVISTAS POR ESTADO
+--------------------------------------------------------------------------------
+
+SELECT 
+    status,
+    COUNT(*) as total
+FROM interviews
+WHERE tenant_id = 'uuid-del-tenant'
+GROUP BY status
+ORDER BY total DESC;
+
+--------------------------------------------------------------------------------
+6.8 CONTAR ENTREVISTAS POR TIPO
+--------------------------------------------------------------------------------
+
+SELECT 
+    interview_type,
+    COUNT(*) as total
+FROM interviews
+WHERE tenant_id = 'uuid-del-tenant'
+GROUP BY interview_type;
+
+--------------------------------------------------------------------------------
+6.9 ENTREVISTAS CON SUS SEGMENTOS
+--------------------------------------------------------------------------------
+
+SELECT 
+    i.id as interview_id,
+    i.interview_type,
+    i.status,
+    COUNT(s.id) as segment_count
+FROM interviews i
+LEFT JOIN interview_segments s ON i.id = s.interview_id
+WHERE i.tenant_id = 'uuid-del-tenant'
+GROUP BY i.id, i.interview_type, i.status
+ORDER BY i.created_at DESC;
+
+--------------------------------------------------------------------------------
+6.10 BUSCAR ENTREVISTA POR S3 KEY
+--------------------------------------------------------------------------------
+
+SELECT * FROM interviews
+WHERE s3_audio_key = 'tenant_name/audio/visitas/20240101_120000_audio.m4a';
+
+================================================================================
+7. CREAR UNA ENTREVISTA (SQL)
+================================================================================
+
+NOTA: Normalmente las entrevistas se crean automáticamente cuando se sube
+un audio. Si necesitas crearla manualmente:
+
+INSERT INTO interviews (
+    tenant_id,
+    project_id,
+    advisor_id,
+    interview_type,
+    s3_audio_key,
+    language_code,
+    status
+) VALUES (
+    'uuid-del-tenant',
+    'uuid-del-proyecto',
+    'uuid-del-advisor',
+    'VISITA',  -- o 'CLIENTE'
+    'tenant_name/audio/visitas/20240101_120000_audio.m4a',
+    'es-PE',
+    'RECEIVED'
+)
+RETURNING *;
+
+================================================================================
+8. ACTUALIZAR UNA ENTREVISTA (SQL)
+================================================================================
+
+-- Actualizar estado
+UPDATE interviews
+SET 
+    status = 'TRANSCRIBED',
+    provider_used = 'GEMINI',
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = 'uuid-de-la-entrevista';
+
+-- Actualizar fechas y duración
+UPDATE interviews
+SET 
+    started_at = '2024-01-01 10:00:00',
+    ended_at = '2024-01-01 10:45:00',
+    duration_sec = 2700,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = 'uuid-de-la-entrevista';
+
+================================================================================
+9. ELIMINAR UNA ENTREVISTA (SQL)
+================================================================================
+
+WARNING: Eliminar una entrevista también eliminará en cascada:
+- Todos los segmentos asociados (interview_segments)
+- Todos los tags de segmentos (segment_tags)
+
+DELETE FROM interviews
+WHERE id = 'uuid-de-la-entrevista';
+
+Para eliminar todas las entrevistas de un proyecto:
+DELETE FROM interviews
+WHERE project_id = 'uuid-del-proyecto';
+
+================================================================================
+10. TABLAS RELACIONADAS
+================================================================================
+
+10.1 INTERVIEW_SEGMENTS
+--------------------------------------------------------------------------------
+Contiene los segmentos de texto (chunks) de cada entrevista con sus
+embeddings para búsqueda semántica.
+
+Campos principales:
+- id: UUID del segmento
+- interview_id: UUID de la entrevista padre
+- segment_index: Índice del segmento en la entrevista
+- start_sec, end_sec: Tiempo en segundos del segmento
+- text: Texto del segmento
+- embedding: Vector de 768 dimensiones (pgvector)
+
+Consulta de segmentos de una entrevista:
+SELECT 
+    segment_index,
+    start_sec,
+    end_sec,
+    text
+FROM interview_segments
+WHERE interview_id = 'uuid-de-la-entrevista'
+ORDER BY segment_index;
+
+10.2 SEGMENT_TAGS
+--------------------------------------------------------------------------------
+Etiquetas asociadas a segmentos para análisis cualitativo.
+
+Campos principales:
+- id: UUID del tag
+- segment_id: UUID del segmento
+- tag: Nombre de la etiqueta
+- source: 'HUMANO' o 'MODELO'
+
+Consulta de tags de una entrevista:
+SELECT DISTINCT
+    st.tag,
+    st.source,
+    COUNT(*) as count
+FROM segment_tags st
+JOIN interview_segments s ON st.segment_id = s.id
+WHERE s.interview_id = 'uuid-de-la-entrevista'
+GROUP BY st.tag, st.source
+ORDER BY count DESC;
+
+================================================================================
+11. FLUJO COMPLETO DE UNA ENTREVISTA
+================================================================================
+
+1. SUBIDA DE AUDIO
+   - Usuario obtiene presigned URL: POST /upload/presign
+   - Sube audio a S3 usando la URL presignada
+   - S3 trigger detecta el archivo
+
+2. CREACIÓN DE ENTREVISTA
+   - El pipeline crea automáticamente el registro en `interviews`
+   - Estado inicial: RECEIVED
+   - Se asocia con tenant, project, advisor
+
+3. TRANSCRIPCIÓN
+   - Step Functions inicia el pipeline
+   - Lambda de transcripción procesa el audio
+   - Usa Gemini (primario) o AWS Transcribe (fallback)
+   - Estado cambia a: TRANSCRIBED
+
+4. GENERACIÓN DE EMBEDDINGS
+   - Lambda de embeddings procesa el texto
+   - Genera embeddings usando Gemini
+   - Estado cambia a: EMBEDDED
+
+5. INDEXACIÓN
+   - Lambda de indexación guarda en pgvector
+   - Crea registros en `interview_segments`
+   - Estado cambia a: INDEXED
+
+6. LISTO PARA USO
+   - La entrevista puede ser consultada por el chatbot
+   - Búsqueda semántica disponible
+   - Análisis y dashboards disponibles
+
+================================================================================
+12. CASOS DE USO COMUNES
+================================================================================
+
+CASO 1: Ver todas las entrevistas de un proyecto
+--------------------------------------------------------------------------------
+SELECT 
+    i.id,
+    i.interview_type,
+    i.status,
+    i.created_at,
+    a.name as advisor_name
+FROM interviews i
+JOIN advisors a ON i.advisor_id = a.id
+WHERE i.project_id = 'uuid-del-proyecto'
+ORDER BY i.created_at DESC;
+
+CASO 2: Encontrar entrevistas completadas recientemente
+--------------------------------------------------------------------------------
+SELECT 
+    id,
+    interview_type,
+    s3_audio_key,
+    created_at,
+    updated_at
+FROM interviews
+WHERE tenant_id = 'uuid-del-tenant'
+  AND status = 'INDEXED'
+  AND updated_at >= NOW() - INTERVAL '7 days'
+ORDER BY updated_at DESC;
+
+CASO 3: Estadísticas de procesamiento
+--------------------------------------------------------------------------------
+SELECT 
+    interview_type,
+    status,
+    COUNT(*) as total,
+    AVG(duration_sec) as avg_duration_sec
+FROM interviews
+WHERE tenant_id = 'uuid-del-tenant'
+GROUP BY interview_type, status
+ORDER BY interview_type, status;
+
+CASO 4: Entrevistas con más segmentos (más contenido)
+--------------------------------------------------------------------------------
+SELECT 
+    i.id,
+    i.interview_type,
+    i.status,
+    COUNT(s.id) as segment_count
+FROM interviews i
+LEFT JOIN interview_segments s ON i.id = s.interview_id
+WHERE i.tenant_id = 'uuid-del-tenant'
+GROUP BY i.id, i.interview_type, i.status
+HAVING COUNT(s.id) > 10
+ORDER BY segment_count DESC;
+
+CASO 5: Buscar entrevista por nombre de archivo
+--------------------------------------------------------------------------------
+SELECT * FROM interviews
+WHERE s3_audio_key LIKE '%nombre-archivo%'
+  AND tenant_id = 'uuid-del-tenant';
+
+================================================================================
+13. NOTAS IMPORTANTES
+================================================================================
+
+1. Las entrevistas se crean automáticamente cuando se procesa un audio.
+   No es necesario crearlas manualmente en la mayoría de casos.
+
+2. El campo `s3_audio_key` debe coincidir exactamente con la ruta en S3.
+
+3. Los estados son secuenciales: RECEIVED → TRANSCRIBED → EMBEDDED → INDEXED
+
+4. Si una entrevista falla (status = FAILED), revisa los logs de:
+   - S3 Trigger Lambda
+   - Step Functions
+   - Transcribe Lambda
+   - Embeddings Lambda
+   - Index Lambda
+
+5. Eliminar una entrevista elimina en cascada todos sus segmentos y tags.
+
+6. Las entrevistas están vinculadas a tenant, project y advisor.
+   Asegúrate de que estos existan antes de crear una entrevista.
+
+7. El tipo de entrevista (VISITA o CLIENTE) determina cómo se procesa
+   la transcripción (con o sin fases).
+
+================================================================================
+14. API ENDPOINTS DISPONIBLES
+================================================================================
+
+Los endpoints de API para interviews están disponibles:
+
+- POST /api/interviews - Crear entrevista
+- GET /api/interviews - Listar entrevistas (con filtros opcionales)
+- GET /api/interviews/{id} - Obtener entrevista específica
+- PUT /api/interviews/{id} - Actualizar entrevista
+- DELETE /api/interviews/{id} - Eliminar entrevista
+
+Todos los endpoints requieren autenticación mediante API Key (header X-API-Key o Authorization: Bearer).
+
+Ejemplo de uso:
+curl -X GET "https://your-api-endpoint.com/api/interviews?tenant_id=uuid&status=INDEXED" \
+  -H "X-API-Key: sk_live_..."
+
+Para más detalles sobre cómo usar estos endpoints, consulta la sección 15 (Ejemplos de API).
+
+================================================================================
+15. EJEMPLOS DE USO DE LA API
+================================================================================
+
+EJEMPLO 1: Crear una entrevista
+--------------------------------------------------------------------------------
+curl -X POST https://your-api-endpoint.com/api/interviews \
+  -H "X-API-Key: sk_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "tenant_id": "uuid-del-tenant",
+    "project_id": "uuid-del-proyecto",
+    "advisor_id": "uuid-del-advisor",
+    "interview_type": "VISITA",
+    "s3_audio_key": "tenant_name/audio/visitas/20240101_120000_audio.m4a",
+    "language_code": "es-PE",
+    "status": "RECEIVED"
+  }'
+
+Respuesta (201 Created):
+{
+  "id": "interview-uuid",
+  "tenant_id": "uuid-del-tenant",
+  "project_id": "uuid-del-proyecto",
+  "advisor_id": "uuid-del-advisor",
+  "interview_type": "VISITA",
+  "s3_audio_key": "tenant_name/audio/visitas/20240101_120000_audio.m4a",
+  "language_code": "es-PE",
+  "status": "RECEIVED",
+  "created_at": "2024-01-01T12:00:00Z",
+  "updated_at": "2024-01-01T12:00:00Z"
+}
+
+EJEMPLO 2: Listar entrevistas con filtros
+--------------------------------------------------------------------------------
+curl -X GET "https://your-api-endpoint.com/api/interviews?tenant_id=uuid&status=INDEXED&limit=10" \
+  -H "X-API-Key: sk_live_..."
+
+Respuesta (200 OK):
+{
+  "interviews": [
+    {
+      "id": "interview-uuid-1",
+      "tenant_id": "uuid-del-tenant",
+      "project_id": "uuid-del-proyecto",
+      "advisor_id": "uuid-del-advisor",
+      "interview_type": "VISITA",
+      "s3_audio_key": "...",
+      "status": "INDEXED",
+      "created_at": "2024-01-01T12:00:00Z"
+    }
+  ],
+  "total": 1
+}
+
+Parámetros de consulta disponibles:
+- tenant_id: Filtrar por tenant
+- project_id: Filtrar por proyecto
+- advisor_id: Filtrar por advisor
+- interview_type: Filtrar por tipo ('VISITA' o 'CLIENTE')
+- status: Filtrar por estado
+- limit: Número de resultados (default: 50)
+- offset: Paginación (default: 0)
+
+EJEMPLO 3: Obtener una entrevista específica
+--------------------------------------------------------------------------------
+curl -X GET https://your-api-endpoint.com/api/interviews/{interview_id} \
+  -H "X-API-Key: sk_live_..."
+
+EJEMPLO 4: Actualizar una entrevista
+--------------------------------------------------------------------------------
+curl -X PUT https://your-api-endpoint.com/api/interviews/{interview_id} \
+  -H "X-API-Key: sk_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "status": "TRANSCRIBED",
+    "provider_used": "GEMINI",
+    "started_at": "2024-01-01T10:00:00Z",
+    "ended_at": "2024-01-01T10:45:00Z",
+    "duration_sec": 2700
+  }'
+
+EJEMPLO 5: Eliminar una entrevista
+--------------------------------------------------------------------------------
+curl -X DELETE https://your-api-endpoint.com/api/interviews/{interview_id} \
+  -H "X-API-Key: sk_live_..."
+
+Respuesta (200 OK):
+{
+  "message": "Interview deleted successfully"
+}
+
+EJEMPLO 6: Python con requests
+--------------------------------------------------------------------------------
+import requests
+
+API_ENDPOINT = "https://your-api-endpoint.com"
+API_KEY = "sk_live_..."
+
+headers = {
+    "X-API-Key": API_KEY,
+    "Content-Type": "application/json"
+}
+
+# Crear entrevista
+response = requests.post(
+    f"{API_ENDPOINT}/api/interviews",
+    headers=headers,
+    json={
+        "tenant_id": "uuid-del-tenant",
+        "project_id": "uuid-del-proyecto",
+        "advisor_id": "uuid-del-advisor",
+        "interview_type": "VISITA",
+        "s3_audio_key": "tenant_name/audio/visitas/20240101_120000_audio.m4a"
+    }
+)
+interview = response.json()
+print(f"Created interview: {interview['id']}")
+
+# Listar entrevistas
+response = requests.get(
+    f"{API_ENDPOINT}/api/interviews",
+    headers=headers,
+    params={
+        "tenant_id": "uuid-del-tenant",
+        "status": "INDEXED",
+        "limit": 10
+    }
+)
+data = response.json()
+print(f"Found {data['total']} interviews")
+
+# Obtener entrevista
+response = requests.get(
+    f"{API_ENDPOINT}/api/interviews/{interview['id']}",
+    headers=headers
+)
+interview_data = response.json()
+print(f"Interview status: {interview_data['status']}")
+
+# Actualizar entrevista
+response = requests.put(
+    f"{API_ENDPOINT}/api/interviews/{interview['id']}",
+    headers=headers,
+    json={
+        "status": "TRANSCRIBED",
+        "provider_used": "GEMINI"
+    }
+)
+updated = response.json()
+print(f"Updated interview: {updated['status']}")
+
+================================================================================
+16. EJEMPLOS DE INTEGRACIÓN SQL (Alternativa)
+================================================================================
+
+EJEMPLO 1: Python con psycopg2
+--------------------------------------------------------------------------------
+import psycopg2
+from psycopg2.extras import RealDictCursor
+
+conn = psycopg2.connect(
+    host="aurora-endpoint.amazonaws.com",
+    database="insightai",
+    user="admin",
+    password="password"
+)
+
+cur = conn.cursor(cursor_factory=RealDictCursor)
+
+# Listar entrevistas
+cur.execute("""
+    SELECT * FROM interviews
+    WHERE tenant_id = %s
+    ORDER BY created_at DESC
+""", (tenant_id,))
+
+interviews = cur.fetchall()
+for interview in interviews:
+    print(f"{interview['id']}: {interview['interview_type']} - {interview['status']}")
+
+cur.close()
+conn.close()
+
+EJEMPLO 2: Node.js con pg
+--------------------------------------------------------------------------------
+const { Pool } = require('pg');
+
+const pool = new Pool({
+  host: 'aurora-endpoint.amazonaws.com',
+  database: 'insightai',
+  user: 'admin',
+  password: 'password'
+});
+
+// Listar entrevistas
+const result = await pool.query(`
+  SELECT * FROM interviews
+  WHERE tenant_id = $1
+  ORDER BY created_at DESC
+`, [tenantId]);
+
+console.log(result.rows);
+
+================================================================================
+FIN DE LA GUÍA
+================================================================================
+
+Para más información sobre otros componentes del sistema, consulta:
+- API_GUIDE.txt: Guía de la API de proyectos
+- ROLE_PERMISSIONS_GUIDE.txt: Guía de roles y permisos
+- README.md: Documentación general del proyecto
+

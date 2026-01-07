@@ -8,6 +8,7 @@ class UserModel extends User {
     super.token,
     super.refreshToken,
     super.expiresAt,
+    super.advisorId,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -20,6 +21,7 @@ class UserModel extends User {
       expiresAt: json['expiresAt'] != null
           ? DateTime.parse(json['expiresAt'] as String)
           : null,
+      advisorId: json['advisorId'] as String?,
     );
   }
 
@@ -31,6 +33,7 @@ class UserModel extends User {
       'token': token,
       'refreshToken': refreshToken,
       'expiresAt': expiresAt?.toIso8601String(),
+      'advisorId': advisorId,
     };
   }
 
@@ -42,6 +45,27 @@ class UserModel extends User {
       token: user.token,
       refreshToken: user.refreshToken,
       expiresAt: user.expiresAt,
+      advisorId: user.advisorId,
+    );
+  }
+
+  UserModel copyWith({
+    String? id,
+    String? name,
+    String? email,
+    String? token,
+    String? refreshToken,
+    DateTime? expiresAt,
+    String? advisorId,
+  }) {
+    return UserModel(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      email: email ?? this.email,
+      token: token ?? this.token,
+      refreshToken: refreshToken ?? this.refreshToken,
+      expiresAt: expiresAt ?? this.expiresAt,
+      advisorId: advisorId ?? this.advisorId,
     );
   }
 }

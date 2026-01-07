@@ -7,6 +7,7 @@ class User extends Equatable {
   final String? token;
   final String? refreshToken;
   final DateTime? expiresAt;
+  final String? advisorId;
 
   const User({
     required this.id,
@@ -15,8 +16,9 @@ class User extends Equatable {
     this.token,
     this.refreshToken,
     this.expiresAt,
+    this.advisorId,
   });
 
   @override
-  List<Object?> get props => [id, name, email, token, refreshToken, expiresAt];
+  List<Object?> get props => [id, name, email, token, refreshToken, expiresAt, advisorId];
 }

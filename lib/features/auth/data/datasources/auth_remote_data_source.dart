@@ -1,8 +1,10 @@
+import 'dart:convert';
 import 'dart:developer';
 
 import 'package:amplify_auth_cognito/amplify_auth_cognito.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
-import '../../../../core/config/cognito_config.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:http/http.dart' as http;
 import '../../../../core/error/exceptions.dart';
 import '../models/user_model.dart';
 
@@ -35,6 +37,8 @@ abstract class AuthRemoteDataSource {
     required String temporaryPassword,
     required String newPassword,
   });
+
+  Future<String?> getAdvisorId({required String userId});
 }
 
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
@@ -241,6 +245,13 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       final session =
           await Amplify.Auth.fetchAuthSession() as CognitoAuthSession;
 
+      String? advisorId;
+      try {
+        advisorId = await getAdvisorId(userId: user.userId);
+      } catch (e) {
+        log('Warning: Could not fetch advisorId: ${e.toString()}');
+      }
+
       return UserModel(
         id: user.userId,
         name: name ?? email ?? 'Unknown',
@@ -249,11 +260,45 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         refreshToken: session.userPoolTokensResult.value.refreshToken,
         expiresAt:
             session.userPoolTokensResult.value.accessToken.claims.expiration,
+        advisorId: advisorId,
       );
     } catch (e) {
       throw ServerException(
         'Error al obtener datos del usuario: ${e.toString()}',
       );
+    }
+  }
+
+  @override
+  Future<String?> getAdvisorId({required String userId}) async {
+    try {
+      final baseUrl = dotenv.env['API_URL'] ?? '';
+      final apiKey = dotenv.env['API_KEY'] ?? '';
+
+      final uri = Uri.parse('$baseUrl/api/advisors/$userId');
+
+      final response = await http.get(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': apiKey,
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body) as Map<String, dynamic>;
+        log("advisor$data");
+        return data['id'] as String?;
+      } else if (response.statusCode == 404) {
+        log('Advisor not found for userId: $userId');
+        return null;
+      } else {
+        log('Error fetching advisor: ${response.statusCode} - ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      log('Error in getAdvisorId: ${e.toString()}');
+      return null;
     }
   }
 }
