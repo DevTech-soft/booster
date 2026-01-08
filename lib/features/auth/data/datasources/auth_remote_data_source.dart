@@ -275,8 +275,8 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       final baseUrl = dotenv.env['API_URL'] ?? '';
       final apiKey = dotenv.env['API_KEY'] ?? '';
 
-      final uri = Uri.parse('$baseUrl/api/advisors/$userId');
-
+      final uri = Uri.parse('$baseUrl/api/advisors/cognito/$userId');
+      log(uri.toString());
       final response = await http.get(
         uri,
         headers: {

@@ -252,9 +252,7 @@ class _RecordStateContent extends StatelessWidget {
                                       transcription: '',
                                       projectId: projectId,
                                       tenantId: tenantId,
-                                      advisorId: 
-                                      "6fe97cd6-6206-4c3e-adc3-491592f1ecad",
-                                      // advisorId,
+                                      advisorId: advisorId,
                                       interviewType: interviewType,
                                       startedAt: startedAt,
                                       endedAt: endedAt,
