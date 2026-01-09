@@ -7,10 +7,13 @@ sealed class RecordUploadEvent {
 class RecordUploadStarted extends RecordUploadEvent {
   final String audioPath;
   final String transcription;
-  // Datos para crear interview
-  final String? projectId;
-  final String? tenantId;
-  final String? advisorId;
+  // Datos obligatorios para el upload
+  final String tenantId;
+  final String projectId;
+  final String advisorId;
+  final String clientId;
+  final String audioType;
+  // Datos opcionales para crear interview
   final InterviewType? interviewType;
   final DateTime? startedAt;
   final DateTime? endedAt;
@@ -19,9 +22,11 @@ class RecordUploadStarted extends RecordUploadEvent {
   const RecordUploadStarted({
     required this.audioPath,
     required this.transcription,
-    this.projectId,
-    this.tenantId,
-    this.advisorId,
+    required this.tenantId,
+    required this.projectId,
+    required this.advisorId,
+    required this.clientId,
+    required this.audioType,
     this.interviewType,
     this.startedAt,
     this.endedAt,

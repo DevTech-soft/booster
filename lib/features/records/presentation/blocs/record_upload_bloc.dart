@@ -28,7 +28,12 @@ class RecordUploadBloc extends Bloc<RecordUploadEvent, RecordUploadState> {
     final uploadResult = await uploadRecord(
       UploadRecordParams(
         audioPath: event.audioPath,
-        transcription: event.transcription ?? '',
+        transcription: event.transcription,
+        tenant: event.tenantId,
+        audioType: event.audioType,
+        projectId: event.projectId,
+        clientId: event.clientId,
+        advisorId: event.advisorId,
       ),
     );
 
@@ -41,10 +46,7 @@ class RecordUploadBloc extends Bloc<RecordUploadEvent, RecordUploadState> {
         final audioId = data['audio_id'] as String;
 
         // Si no hay datos para crear interview, solo emitir success
-        if (event.projectId == null ||
-            event.tenantId == null ||
-            event.advisorId == null ||
-            event.interviewType == null) {
+        if (event.interviewType == null) {
           emit(RecordUploadSuccess(s3Key: s3Key, audioId: audioId));
           return;
         }
@@ -54,9 +56,9 @@ class RecordUploadBloc extends Bloc<RecordUploadEvent, RecordUploadState> {
 
         final interviewResult = await createInterview(
           CreateInterviewParams(
-            tenantId: event.tenantId!,
-            projectId: event.projectId!,
-            advisorId: event.advisorId!,
+            tenantId: event.tenantId,
+            projectId: event.projectId,
+            advisorId: event.advisorId,
             interviewType: event.interviewType!,
             s3AudioKey: s3Key,
             startedAt: event.startedAt,

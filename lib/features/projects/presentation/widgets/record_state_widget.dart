@@ -22,6 +22,8 @@ class RecordStateWidget extends StatelessWidget {
   final String? projectId;
   final String? tenantId;
   final String? advisorId;
+  final String? clientId;
+  final String? audioType;
   final InterviewType? interviewType;
 
   const RecordStateWidget({
@@ -29,6 +31,8 @@ class RecordStateWidget extends StatelessWidget {
     this.projectId,
     this.tenantId,
     this.advisorId,
+    this.clientId,
+    this.audioType,
     this.interviewType,
   });
 
@@ -43,6 +47,8 @@ class RecordStateWidget extends StatelessWidget {
         projectId: projectId,
         tenantId: tenantId,
         advisorId: advisorId,
+        clientId: clientId,
+        audioType: audioType,
         interviewType: interviewType,
       ),
     );
@@ -53,12 +59,16 @@ class _RecordStateContent extends StatelessWidget {
   final String? projectId;
   final String? tenantId;
   final String? advisorId;
+  final String? clientId;
+  final String? audioType;
   final InterviewType? interviewType;
 
   const _RecordStateContent({
     this.projectId,
     this.tenantId,
     this.advisorId,
+    this.clientId,
+    this.audioType,
     this.interviewType,
   });
 
@@ -225,7 +235,7 @@ class _RecordStateContent extends StatelessWidget {
                           uploadState is RecordUploadInProgress
                               ? 'Subiendo audio...'
                               : uploadState is InterviewCreating
-                                  ? 'Creando entrevista...'
+                                  ? 'Creando entre...'
                                   : 'Guardar Audio',
                       isFullWidth: false,
                       width: 200.w,
@@ -235,7 +245,6 @@ class _RecordStateContent extends StatelessWidget {
                               ? null
                               : () {
                                 if (state is RecordingWithAudio) {
-                                  // Capturar datos adicionales si el estado es RecordingStopped
                                   DateTime? startedAt;
                                   DateTime? endedAt;
                                   int? durationSec;
@@ -250,9 +259,11 @@ class _RecordStateContent extends StatelessWidget {
                                     RecordUploadStarted(
                                       audioPath: state.audioPath,
                                       transcription: '',
-                                      projectId: projectId,
-                                      tenantId: tenantId,
-                                      advisorId: advisorId,
+                                      projectId: projectId ?? '',
+                                      tenantId: tenantId ?? '',
+                                      advisorId: advisorId ?? '',
+                                      clientId: clientId ?? '',
+                                      audioType: audioType ?? '',
                                       interviewType: interviewType,
                                       startedAt: startedAt,
                                       endedAt: endedAt,

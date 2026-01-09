@@ -18,6 +18,19 @@ class UploadRecord
 class UploadRecordParams {
   final String audioPath;
   final String? transcription;
+  final String tenant;
+  final String audioType;
+  final String projectId;
+  final String clientId;
+  final String advisorId;
 
-  UploadRecordParams({required this.audioPath, required this.transcription});
+  UploadRecordParams({
+    required this.audioPath,
+    required this.transcription,
+    required this.tenant,
+    required this.audioType,
+    required this.projectId,
+    required this.clientId,
+    required this.advisorId,
+  });
 }

@@ -13,19 +13,22 @@ abstract class RecordsRemoteDatasource {
 class RecordsRemoteDatasourceImpl implements RecordsRemoteDatasource {
   final String apiUrl = dotenv.env['API_URL'] ?? '';
   @override
-  Future<Map<String, dynamic>> uploadRecord( UploadRecordParams params) async {
-   final file = File(params.audioPath);
+  Future<Map<String, dynamic>> uploadRecord(UploadRecordParams params) async {
+    final file = File(params.audioPath);
     final filename = file.uri.pathSegments.last;
-     Map<String, dynamic> presignedUploadResponse = {};
+    Map<String, dynamic> presignedUploadResponse = {};
     log('filename: $filename');
 
     final presignResponse = await http.post(
       Uri.parse('$apiUrl/upload/presign'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
-        'tenant': 'tenant-name',
-        'audio_type': 'visitas',
+        'tenant': params.tenant,
+        'audio_type': params.audioType,
         'filename': filename,
+        'project_id': params.projectId,
+        'client_id': params.clientId,
+        'advisor_id': params.advisorId,
       }),
     );
 
@@ -46,26 +49,25 @@ class RecordsRemoteDatasourceImpl implements RecordsRemoteDatasource {
     log('Audio ID: $audioId');
 
     final bytes = await file.readAsBytes();
-
     final uploadResponse = await http.put(
       Uri.parse(uploadUrl),
       headers: {
         'Content-Type': 'audio/mp4',
         'x-amz-meta-audio_id': audioId,
-        'x-amz-meta-audio_type': 'visitas',
+        'x-amz-meta-audio_type': params.audioType,
+        'x-amz-meta-advisor_id': params.advisorId,
+        'x-amz-meta-client_id': params.clientId,
+        'x-amz-meta-project_id': params.projectId,
+        'x-amz-meta-tenant_id': params.tenant,
       },
       body: bytes,
     );
-
     if (uploadResponse.statusCode != 200) {
       throw ServerException(
         'Error upload S3: ${uploadResponse.statusCode} - ${uploadResponse.body}',
       );
     }
 
-   return  presignedUploadResponse = {
-      's3_key': s3Key,
-      'audio_id': audioId,
-    };
+    return presignedUploadResponse = {'s3_key': s3Key, 'audio_id': audioId};
   }
-  }
+}

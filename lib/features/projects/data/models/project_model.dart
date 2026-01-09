@@ -18,9 +18,6 @@ class ProjectModel extends Project {
     // Mapear is_active a status
     final isActive = json['is_active'] as bool? ?? true;
     final status = isActive ? 'Abierto' : 'Cerrado';
-
-    // El número de entrevistas no viene de la API de proyectos
-    // Se inicializa en 0 por ahora
     final interviews = json['interviews'] as int? ?? 0;
 
     return ProjectModel(
@@ -35,7 +32,6 @@ class ProjectModel extends Project {
     );
   }
 
-  /// Convierte el modelo a JSON para almacenamiento local
   Map<String, dynamic> toJson() {
     return {
       'id': id,

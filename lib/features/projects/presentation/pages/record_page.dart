@@ -13,6 +13,8 @@ class RecordPage extends StatefulWidget {
   final String? projectId;
   final String? tenantId;
   final String? advisorId;
+  final String? clientId;
+  final String? audioType;
   final InterviewType? interviewType;
 
   const RecordPage({
@@ -20,6 +22,8 @@ class RecordPage extends StatefulWidget {
     this.projectId,
     this.tenantId,
     this.advisorId,
+    this.clientId,
+    this.audioType,
     this.interviewType,
   });
 
@@ -58,6 +62,8 @@ class _RecordPageState extends State<RecordPage> {
                       projectId: widget.projectId,
                       tenantId: widget.tenantId,
                       advisorId: widget.advisorId,
+                      clientId: widget.clientId,
+                      audioType: widget.audioType,
                       interviewType: widget.interviewType,
                     ),
                     AppSpacing.verticalSpaceXL,

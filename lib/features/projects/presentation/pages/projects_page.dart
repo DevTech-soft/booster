@@ -7,6 +7,7 @@ import 'package:booster/core/widgets/primary_button.dart';
 import 'package:booster/features/auth/data/datasources/auth_remote_data_source.dart';
 import 'package:booster/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:booster/features/auth/presentation/bloc/auth_state.dart';
+import 'package:booster/features/clients/presentation/widgets/client_form_dialog.dart';
 import 'package:booster/features/interviews/domain/constants/interview_constants.dart';
 import 'package:booster/features/projects/presentation/bloc/bloc.dart';
 import 'package:booster/features/projects/presentation/pages/record_page.dart';
@@ -302,7 +303,7 @@ class _ProjectsPageContent extends StatelessWidget {
               leading: const Icon(Icons.location_on, color: AppColors.primary),
               onTap: () {
                 Navigator.of(dialogContext).pop();
-                _navigateToRecordPage(
+                _showClientFormDialog(
                   context,
                   projectId: projectId,
                   tenantId: tenantId,
@@ -317,7 +318,7 @@ class _ProjectsPageContent extends StatelessWidget {
               leading: const Icon(Icons.person, color: AppColors.primary),
               onTap: () {
                 Navigator.of(dialogContext).pop();
-                _navigateToRecordPage(
+                _showClientFormDialog(
                   context,
                   projectId: projectId,
                   tenantId: tenantId,
@@ -338,11 +339,40 @@ class _ProjectsPageContent extends StatelessWidget {
     );
   }
 
+  void _showClientFormDialog(
+    BuildContext context, {
+    required String projectId,
+    required String tenantId,
+    required String advisorId,
+    required InterviewType interviewType,
+  }) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => ClientFormDialog(
+        interviewType: interviewType,
+        tenantId: tenantId,
+        onClientSelected: (clientId, audioType) {
+          _navigateToRecordPage(
+            context,
+            projectId: projectId,
+            tenantId: tenantId,
+            advisorId: advisorId,
+            clientId: clientId,
+            audioType: audioType,
+            interviewType: interviewType,
+          );
+        },
+      ),
+    );
+  }
+
   void _navigateToRecordPage(
     BuildContext context, {
     required String projectId,
     required String tenantId,
     required String advisorId,
+    required String clientId,
+    required String audioType,
     required InterviewType interviewType,
   }) {
     Navigator.push(
@@ -352,6 +382,8 @@ class _ProjectsPageContent extends StatelessWidget {
           projectId: projectId,
           tenantId: tenantId,
           advisorId: advisorId,
+          clientId: clientId,
+          audioType: audioType,
           interviewType: interviewType,
         ),
       ),
