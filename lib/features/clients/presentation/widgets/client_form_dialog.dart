@@ -49,6 +49,40 @@ class _ClientFormDialogState extends State<ClientFormDialog> {
 
   bool get _isVisita => widget.interviewType == InterviewType.visita;
 
+  String _normalizeMaritalStatus(String? status) {
+    if (status == null || status.isEmpty) return 'Soltero';
+
+    final normalized = status.toLowerCase().trim();
+
+    if (normalized == 'soltero' || normalized == 'soltera') {
+      return 'Soltero';
+    } else if (normalized == 'casado' || normalized == 'casada') {
+      return 'Casado';
+    } else if (normalized == 'divorciado' || normalized == 'divorciada') {
+      return 'Divorciado';
+    } else if (normalized == 'viudo' || normalized == 'viuda') {
+      return 'Viudo';
+    }
+
+    return 'Soltero'; // Default value
+  }
+
+  String _maritalStatusToApi(String status) {
+    // Convertir el formato del dropdown al formato del API (minúsculas)
+    switch (status) {
+      case 'Soltero':
+        return 'soltero';
+      case 'Casado':
+        return 'casado';
+      case 'Divorciado':
+        return 'divorciado';
+      case 'Viudo':
+        return 'viudo';
+      default:
+        return 'soltero';
+    }
+  }
+
   Future<void> _handleSearch() async {
     if (_dniController.text.trim().isEmpty) {
       _showError('Por favor ingresa un DNI');
@@ -64,7 +98,7 @@ class _ClientFormDialogState extends State<ClientFormDialog> {
         _clientId = clientData['id'];
         _fullNameController.text = clientData['full_name'] ?? '';
         _ageController.text = clientData['age']?.toString() ?? '';
-        _maritalStatus = clientData['marital_status'] ?? 'Soltero';
+        _maritalStatus = _normalizeMaritalStatus(clientData['marital_status']);
         _isReadOnly = true;
         _isLoading = false;
       });
@@ -91,7 +125,7 @@ class _ClientFormDialogState extends State<ClientFormDialog> {
           fullName: _fullNameController.text.trim(),
           dni: _dniController.text.trim(),
           age: int.parse(_ageController.text.trim()),
-          maritalStatus: _maritalStatus,
+          maritalStatus: _maritalStatusToApi(_maritalStatus),
           tenantId: widget.tenantId,
         );
         clientId = clientData['id'];
@@ -104,7 +138,7 @@ class _ClientFormDialogState extends State<ClientFormDialog> {
           return;
         }
         clientId = _clientId!;
-        audioType = 'cliente';
+        audioType = 'clientes';
       }
 
       setState(() => _isLoading = false);

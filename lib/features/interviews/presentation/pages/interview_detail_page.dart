@@ -5,6 +5,7 @@ import 'package:booster/core/widgets/app_header.dart';
 import 'package:booster/features/interviews/domain/constants/interview_constants.dart';
 import 'package:booster/features/interviews/presentation/bloc/bloc.dart';
 import 'package:booster/features/interviews/presentation/widgets/interview_status_badge.dart';
+import 'package:booster/features/projects/presentation/pages/projects_page.dart';
 import 'package:booster/injection_container.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -38,7 +39,7 @@ class InterviewDetailPage extends StatelessWidget {
                     backgroundColor: Colors.green,
                   ),
                 );
-                Navigator.pop(context, true); // Return true to indicate deletion
+                _navigateToProjectsPage(context);
               }
 
               if (state is InterviewDetailError && state.interview == null) {
@@ -63,7 +64,7 @@ class InterviewDetailPage extends StatelessWidget {
                     AppHeader(
                       showDecoration: false,
                       leading: InkWell(
-                        onTap: () => Navigator.pop(context),
+                        onTap: () => _navigateToProjectsPage(context),
                         child: SvgPicture.asset('assets/svg/back.svg'),
                       ),
                     ),
@@ -125,7 +126,7 @@ class InterviewDetailPage extends StatelessWidget {
                   AppHeader(
                     showDecoration: false,
                     leading: InkWell(
-                      onTap: () => Navigator.pop(context),
+                      onTap: () => _navigateToProjectsPage(context),
                       child: SvgPicture.asset('assets/svg/back.svg'),
                     ),
                     trailing: PopupMenuButton<String>(
@@ -455,6 +456,16 @@ class InterviewDetailPage extends StatelessWidget {
 
   String _formatDateTime(DateTime dateTime) {
     return DateFormat('dd/MM/yyyy HH:mm').format(dateTime);
+  }
+
+  void _navigateToProjectsPage(BuildContext context) {
+    // Navegar a ProjectsPage y limpiar toda la pila de navegación
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(
+        builder: (context) => const ProjectsPage(),
+      ),
+      (route) => false, // Remover todas las rutas anteriores
+    );
   }
 
   void _showDeleteConfirmation(BuildContext context) {

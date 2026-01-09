@@ -18,7 +18,7 @@ class RecordsRemoteDatasourceImpl implements RecordsRemoteDatasource {
     final filename = file.uri.pathSegments.last;
     Map<String, dynamic> presignedUploadResponse = {};
     log('filename: $filename');
-
+    log('audio type: ${params.audioType}');
     final presignResponse = await http.post(
       Uri.parse('$apiUrl/upload/presign'),
       headers: {'Content-Type': 'application/json'},

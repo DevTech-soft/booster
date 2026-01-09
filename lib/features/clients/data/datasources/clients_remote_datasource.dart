@@ -61,7 +61,7 @@ class ClientsRemoteDatasourceImpl implements ClientsRemoteDatasource {
       Uri.parse('$apiUrl/api/clients/dni/$dni'),
       headers: {'Content-Type': 'application/json', 'X-API-Key': apiKey},
     );
-
+    log('body response cliente${response.body}');
     if (response.statusCode != 200) {
       throw ServerException(
         'Error getting client: ${response.body} (${response.statusCode})',
